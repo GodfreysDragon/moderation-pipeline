@@ -2,6 +2,7 @@ export type User = {
     id: number;
     name: string;
     email: string;
+    role: 'member' | 'moderator' | 'admin';
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
@@ -11,6 +12,7 @@ export type User = {
 };
 
 export type Auth = {
+    can: { moderate: boolean; managePolicy: boolean };
     user: User;
 };
 

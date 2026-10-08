@@ -16,6 +16,8 @@ use App\Models\BlockedHash;
 use App\Models\PolicyVersion;
 use App\Models\Submission;
 use App\Models\User;
+use App\Moderation\ModerationService;
+use App\Support\MediaSanitizer;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Lottery;
@@ -177,7 +179,7 @@ test('an upload that is not really an image is rejected by the prepare stage', f
     Storage::disk('local')->put('uploads/bad', 'this is not an image');
     $submission = Submission::factory()->for($this->user)->create(['upload_path' => 'uploads/bad', 'caption' => null]);
 
-    (new PrepareMedia($submission))->handle(app(App\Support\MediaSanitizer::class), app(App\Moderation\ModerationService::class));
+    (new PrepareMedia($submission))->handle(app(MediaSanitizer::class), app(ModerationService::class));
 
     expect($submission->refresh()->status)->toBe(SubmissionStatus::Rejected)
         ->and($submission->decision_reason)->toBe('unreadable_media')

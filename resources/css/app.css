@@ -170,3 +170,32 @@
         @apply bg-background text-foreground;
     }
 }
+
+/*
+ * Chart tokens (validated with the dataviz palette checker in both modes).
+ * Identity colours: series-1 = automated, series-2 = human-reviewed; the
+ * neutral is for "still open" and always ships with a legend and table view.
+ * The app resolves the theme to a .dark class, so dark steps live there.
+ */
+:root {
+    --viz-series-1: #2a78d6;
+    --viz-series-2: #eb6834;
+    --viz-neutral: #b9b8b0;
+    --viz-grid: #e1e0d9;
+    --viz-axis: #c3c2b7;
+    --viz-muted: #898781;
+    --viz-surface: #fcfcfb;
+    --viz-good: #0ca30c;
+    --viz-warning: #fab219;
+    --viz-critical: #d03b3b;
+}
+
+.dark {
+    --viz-series-1: #3987e5;
+    --viz-series-2: #d95926;
+    --viz-neutral: #5f5e59;
+    --viz-grid: #2c2c2a;
+    --viz-axis: #383835;
+    --viz-muted: #898781;
+    --viz-surface: #1a1a19;
+}

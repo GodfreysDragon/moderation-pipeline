@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ReviewTask;
+use App\Moderation\ModerationService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -40,7 +42,18 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user(),
+                'can' => [
+                    'moderate' => (bool) $request->user()?->isStaff(),
+                    'managePolicy' => (bool) $request->user()?->isAdmin(),
+                ],
             ],
+            // Open tasks this user may take, for the sidebar badge.
+            'queueCount' => fn () => $request->user()?->isStaff()
+                ? ReviewTask::query()->available()
+                    ->whereIn('kind', array_map(fn ($k) => $k->value, app(ModerationService::class)->kindsFor($request->user())))
+                    ->where(fn ($q) => $q->whereNull('excluded_reviewer_id')->orWhere('excluded_reviewer_id', '!=', $request->user()->id))
+                    ->count()
+                : null,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

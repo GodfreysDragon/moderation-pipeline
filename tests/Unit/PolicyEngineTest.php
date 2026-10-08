@@ -4,8 +4,9 @@ use App\Enums\Category;
 use App\Enums\Outcome;
 use App\Models\PolicyVersion;
 use App\Moderation\PolicyEngine;
+use App\Moderation\PolicyResult;
 
-function evaluate(?array $scores): App\Moderation\PolicyResult
+function evaluate(?array $scores): PolicyResult
 {
     return (new PolicyEngine)->evaluate($scores, PolicyVersion::defaultThresholds());
 }
