@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ReviewTask;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -15,6 +16,11 @@ return new class extends Migration
             $table->foreignId('reviews_task_id')->nullable()->after('excluded_reviewer_id')->constrained('review_tasks')->nullOnDelete();
             $table->index(['resolved_by', 'graphic', 'resolved_at']);
         });
+
+        // Existing tasks: flag the ones showing a graphic image, as openTask() now does.
+        ReviewTask::query()->with('submission')->lazyById()->each(
+            fn (ReviewTask $task) => $task->updateQuietly(['graphic' => $task->submission->isGraphic()]),
+        );
     }
 
     public function down(): void
