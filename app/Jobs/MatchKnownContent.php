@@ -11,8 +11,8 @@ use App\Jobs\Concerns\SendsFailuresToReview;
 use App\Models\BlockedHash;
 use App\Models\PolicyVersion;
 use App\Models\Submission;
+use App\Moderation\BlocklistMatcher;
 use App\Moderation\ModerationService;
-use App\Support\PerceptualHash;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -36,7 +36,7 @@ class MatchKnownContent implements ShouldQueue
         return PipelineStage::MatchKnown;
     }
 
-    public function handle(ModerationService $moderation): void
+    public function handle(ModerationService $moderation, BlocklistMatcher $matcher): void
     {
         $submission = $this->submission->refresh();
 
@@ -59,21 +59,10 @@ class MatchKnownContent implements ShouldQueue
         $exact = $match !== null;
         $distance = $exact ? 0 : null;
         $checked = 0;
+        $lookup = 'exact';
 
         if ($match === null) {
-            // Linear scan is fine for thousands of hashes; a BK-tree or multi-index
-            // hashing would be the next step for millions.
-            $hashes = BlockedHash::query()->select(['id', 'dhash', 'category', 'source_submission_id'])->lazyById(1000);
-
-            foreach ($hashes as $hash) {
-                $checked++;
-                $d = PerceptualHash::distance($submission->dhash, $hash->dhash);
-
-                if ($distance === null || $d < $distance) {
-                    $distance = $d;
-                    $match = $hash;
-                }
-            }
+            ['hash' => $match, 'distance' => $distance, 'checked' => $checked, 'lookup' => $lookup] = $matcher->nearest($submission->dhash, $maxDistance);
         }
 
         $isMatch = $match !== null && $distance !== null && $distance <= $maxDistance;
@@ -85,6 +74,7 @@ class MatchKnownContent implements ShouldQueue
             'blocked_hash_id' => $isMatch ? $match->id : null,
             'source_submission_id' => $isMatch ? $match->source_submission_id : null,
             'hashes_checked' => $checked ?: (int) ($match !== null),
+            'lookup' => $lookup,
         ]);
 
         if ($isMatch) {

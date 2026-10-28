@@ -29,6 +29,10 @@ Upload ─► PrepareMedia ─► MatchKnownContent ─► ClassifyContent ─�
   worker on each, as `composer run dev` runs them, a slow or throttled model never holds up media processing.
 - **Fail safe:** if classification fails, the model refuses, or any stage runs out of retries, the item goes to a
   person. It is never approved.
+- **Blocklist lookup:** each 64-bit dHash is also stored as eight indexed 8-bit bands. Two hashes within 7 bits of
+  each other must share at least one band exactly, so a near-duplicate check only compares the rows that do. With
+  100,000 blocked images that is about 3% of rows: a median 79 ms instead of 2.2 s for a full scan (SQLite, this
+  machine). Above a distance of 7 the guarantee no longer holds and it scans everything.
 - **Review tasks:**
 
     | Task       | When it is created                                                     |
