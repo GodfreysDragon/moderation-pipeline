@@ -11,6 +11,8 @@ It also shows the operational side of moderation that demos usually skip:
 - re-uploads of known-bad images caught without an AI call;
 - measured precision of the automated decisions.
 
+![Review workspace: a live Claude classification of the "parts for sale" sample, with scores, evidence and the decision panel](docs/screenshots/review-workspace.png)
+
 ## How it works
 
 ```
@@ -80,6 +82,16 @@ MODERATION_AUDIT_SAMPLE_RATE=0.05     # default for the first policy version
 
 The fake classifier reads the caption and filename only. It also accepts pinned scores such as `[violence:0.6]`,
 and `[refuse]` simulates a model refusal, which is handy for demos and tests.
+
+Measured against the live API (`claude-opus-5-5`, effort `low`), one classification uses about 2,800 input tokens
+with an image (about 2,100 text-only, mostly the fixed system prompt and schema) and 200 to 300 output tokens, and
+takes 3 to 5 seconds.
+
+## Screenshots
+
+| Policy backtest                                                                                         | Staff dashboard                                                      |
+| ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| ![Policy editor with a backtest of a lower spam reject threshold](docs/screenshots/policy-backtest.png) | ![Staff dashboard in dark mode](docs/screenshots/dashboard-dark.png) |
 
 ## Tests
 

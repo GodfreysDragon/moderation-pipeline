@@ -160,7 +160,7 @@ const SAMPLES = [
     ['Crypto giveaway', 'Rejected'],
     ['Parts for sale', 'In review'],
     ['Known meme', 'Rejected'],
-    ['Personal attack', 'In review'],
+    ['Personal attack', 'Rejected'],
     ['Distress', 'In review'],
 ];
 

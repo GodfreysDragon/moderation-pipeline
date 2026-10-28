@@ -93,7 +93,7 @@ const samples = [
     },
     {
         label: 'Personal attack',
-        hint: 'Text only, human review',
+        hint: 'Text only, rejected as doxxing',
         file: null,
         caption: "@jordan you're such a loser. I found your home address too.",
     },

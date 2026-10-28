@@ -112,6 +112,14 @@ test('a confident violation is rejected automatically', function () {
         ->and($submission->tasks)->toBeEmpty();
 });
 
+test('a text-only doxxing threat is rejected automatically', function () {
+    $submission = submit(['caption' => "@jordan you're such a loser. I found your home address too."]);
+
+    expect($submission->status)->toBe(SubmissionStatus::Rejected)
+        ->and($submission->decision_reason)->toBe('harassment')
+        ->and(stageStatuses($submission))->toMatchArray(['prepare' => 'skipped', 'match_known' => 'skipped']);
+});
+
 test('an uncertain item goes to the review queue with a priority', function () {
     $submission = submit(['caption' => 'is this ok? [violence:0.6]']);
     $task = $submission->tasks()->sole();

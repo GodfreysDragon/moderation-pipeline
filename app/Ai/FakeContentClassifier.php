@@ -26,7 +26,7 @@ class FakeContentClassifier implements ContentClassifier
         'sexual' => ['nude' => 0.9, 'nsfw' => 0.88, 'explicit' => 0.7, 'lingerie' => 0.45, 'bikini' => 0.2],
         'violence' => ['gore' => 0.93, 'blood' => 0.6, 'beheading' => 0.97, 'fight' => 0.4, 'gun' => 0.35, 'wound' => 0.5],
         'hate' => ['subhuman' => 0.92, 'vermin' => 0.7, 'go back to' => 0.6, 'supremacy' => 0.75],
-        'harassment' => ['idiot' => 0.45, 'loser' => 0.5, 'kill yourself' => 0.95, 'doxx' => 0.9, 'home address' => 0.7],
+        'harassment' => ['idiot' => 0.45, 'loser' => 0.5, 'kill yourself' => 0.95, 'doxx' => 0.9, 'home address' => 0.92],
         'self_harm' => ['self-harm' => 0.8, 'suicide' => 0.7, 'cutting' => 0.55, 'want to die' => 0.85, 'pro-ana' => 0.85],
         'illegal_goods' => ['for sale' => 0.3, 'cocaine' => 0.92, 'mdma' => 0.88, 'unregistered' => 0.65, 'ghost gun' => 0.9, 'fake id' => 0.9, 'dm to buy' => 0.6],
         'spam' => ['crypto' => 0.45, 'giveaway' => 0.55, 'click the link' => 0.7, 'guaranteed returns' => 0.92, 'dm me' => 0.4, 'free followers' => 0.85],
