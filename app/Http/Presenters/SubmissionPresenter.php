@@ -25,6 +25,7 @@ final class SubmissionPresenter
             'known_content' => 'Matches previously removed content',
             'unreadable_media' => 'The image could not be processed',
             'ai_unavailable' => 'Needs a manual check',
+            'pipeline_error' => 'Processing failed; needs a manual check',
             'other' => 'Other policy violation',
             default => str($reason)->replace('_', ' ')->ucfirst()->toString(),
         };

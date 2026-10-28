@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/vue-starter-kit",
+    "name": "calmarusin/moderation-pipeline",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "AI content-moderation pipeline with a human review workflow.",
     "keywords": [
         "laravel",
         "framework"
@@ -54,7 +54,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --queue=moderation-ai,moderation,default --tries=1 --timeout=0\" \"npm run dev\" --names='server,queue,vite'"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#86efac,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --queue=moderation,default --tries=1 --timeout=0\" \"php artisan queue:listen --queue=moderation-ai --tries=1 --timeout=0\" \"npm run dev\" --names='server,queue,ai-queue,vite'"
         ],
         "lint": [
             "pint --parallel"

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\Category;
 use App\Enums\Decision;
 use App\Enums\TaskKind;
+use App\Exceptions\ClaimLostException;
 use App\Http\Presenters\SubmissionPresenter;
 use App\Models\ReviewTask;
 use App\Moderation\ModerationService;
@@ -161,14 +162,20 @@ class ReviewController extends Controller
             return back()->withErrors(['decision' => 'An escalation is already with an admin.']);
         }
 
-        $this->moderation->decide(
-            $task,
-            $user,
-            $decision,
-            $validated['reason'] ?? null,
-            $validated['note'] ?? null,
-            $validated['block_image'] ?? true,
-        );
+        try {
+            $this->moderation->decide(
+                $task,
+                $user,
+                $decision,
+                $validated['reason'] ?? null,
+                $validated['note'] ?? null,
+                $validated['block_image'] ?? true,
+            );
+        } catch (ClaimLostException) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Your claim on this task expired or was taken. Claim it again to decide.']);
+
+            return to_route('review.show', $task);
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => match ($decision) {
             Decision::Approve => 'Approved.',

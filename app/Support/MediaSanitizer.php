@@ -99,9 +99,9 @@ final class MediaSanitizer
         if ($keepsAlpha) {
             imagealphablending($canvas, false);
             imagesavealpha($canvas, true);
-            imagefill($canvas, 0, 0, imagecolorallocatealpha($canvas, 0, 0, 0, 127));
+            imagefill($canvas, 0, 0, Gd::color($canvas, 0, 0, 0, 127));
         } else {
-            imagefill($canvas, 0, 0, imagecolorallocate($canvas, 255, 255, 255));
+            imagefill($canvas, 0, 0, Gd::color($canvas, 255, 255, 255));
         }
 
         imagecopyresampled($canvas, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);

@@ -2,7 +2,9 @@
 
 namespace Database\Seeders\Demo;
 
+use App\Support\Gd;
 use GdImage;
+use RuntimeException;
 
 /**
  * Procedurally drawn demo images, so the repository ships no stock photos.
@@ -32,7 +34,7 @@ final class SampleImages
     public static function scene(int $seed, int $width = 800, int $height = 600): string
     {
         mt_srand($seed);
-        $image = imagecreatetruecolor($width, $height);
+        $image = Gd::canvas($width, $height);
 
         $top = [mt_rand(20, 90), mt_rand(40, 120), mt_rand(120, 200)];
         $bottom = [mt_rand(200, 255), mt_rand(120, 200), mt_rand(60, 140)];
@@ -40,20 +42,20 @@ final class SampleImages
 
         for ($y = 0; $y < $horizon; $y++) {
             $t = $y / $horizon;
-            $color = imagecolorallocate($image, ...array_map(fn ($a, $b) => (int) ($a + ($b - $a) * $t), $top, $bottom));
+            $color = Gd::color($image, ...array_map(fn ($a, $b) => (int) ($a + ($b - $a) * $t), $top, $bottom));
             imageline($image, 0, $y, $width, $y, $color);
         }
 
-        $sun = imagecolorallocate($image, 255, mt_rand(200, 240), mt_rand(120, 180));
+        $sun = Gd::color($image, 255, mt_rand(200, 240), mt_rand(120, 180));
         $sunSize = mt_rand(70, 140);
         imagefilledellipse($image, mt_rand(100, $width - 100), $horizon - mt_rand(40, 160), $sunSize, $sunSize, $sun);
 
         $sea = [mt_rand(10, 40), mt_rand(60, 110), mt_rand(110, 160)];
-        imagefilledrectangle($image, 0, $horizon, $width, $height, imagecolorallocate($image, ...$sea));
+        imagefilledrectangle($image, 0, $horizon, $width, $height, Gd::color($image, ...$sea));
 
         for ($i = 0; $i < 3; $i++) {
             $shade = 30 + $i * 25;
-            $hill = imagecolorallocate($image, $shade, $shade + mt_rand(10, 40), $shade);
+            $hill = Gd::color($image, $shade, $shade + mt_rand(10, 40), $shade);
             $points = [0, $height];
             $x = 0;
 
@@ -68,7 +70,7 @@ final class SampleImages
         }
 
         // Sparkle on the water
-        $glint = imagecolorallocatealpha($image, 255, 255, 255, 80);
+        $glint = Gd::color($image, 255, 255, 255, 80);
 
         for ($i = 0; $i < 40; $i++) {
             $gx = mt_rand(0, $width);
@@ -84,7 +86,7 @@ final class SampleImages
     /**
      * Big blocky text on a flat background.
      *
-     * @param  list<string>  $lines
+     * @param  non-empty-list<string>  $lines
      * @param  array{int, int, int}  $background
      * @param  array{int, int, int}  $foreground
      */
@@ -96,17 +98,17 @@ final class SampleImages
         $longest = max(array_map('strlen', $lines));
 
         // Draw small, then scale up with nearest-neighbour for crisp pixel text.
-        $small = imagecreatetruecolor($longest * $charW + 8, count($lines) * ($charH + 4) + 8);
-        imagefill($small, 0, 0, imagecolorallocate($small, ...$background));
-        $ink = imagecolorallocate($small, ...$foreground);
+        $small = Gd::canvas($longest * $charW + 8, count($lines) * ($charH + 4) + 8);
+        imagefill($small, 0, 0, Gd::color($small, ...$background));
+        $ink = Gd::color($small, ...$foreground);
 
         foreach ($lines as $i => $line) {
             $x = (int) ((imagesx($small) - strlen($line) * $charW) / 2);
             imagestring($small, $font, $x, 4 + $i * ($charH + 4), $line, $ink);
         }
 
-        $image = imagecreatetruecolor($width, $height);
-        imagefill($image, 0, 0, imagecolorallocate($image, ...$background));
+        $image = Gd::canvas($width, $height);
+        imagefill($image, 0, 0, Gd::color($image, ...$background));
         $scale = min(($width - 80) / imagesx($small), ($height - 80) / imagesy($small));
         $w = (int) (imagesx($small) * $scale);
         $h = (int) (imagesy($small) * $scale);
@@ -121,16 +123,17 @@ final class SampleImages
      */
     public static function knownBad(): string
     {
-        $image = imagecreatetruecolor(800, 600);
+        $image = Gd::canvas(800, 600);
 
         for ($y = 0; $y < 600; $y += 50) {
             for ($x = 0; $x < 800; $x += 50) {
                 $on = (($x + $y) / 50) % 2 === 0;
-                imagefilledrectangle($image, $x, $y, $x + 49, $y + 49, $on ? imagecolorallocate($image, 230, 60, 140) : imagecolorallocate($image, 30, 30, 60));
+                imagefilledrectangle($image, $x, $y, $x + 49, $y + 49, $on ? Gd::color($image, 230, 60, 140) : Gd::color($image, 30, 30, 60));
             }
         }
 
-        $poster = imagecreatefromstring(self::poster(['REMOVED', 'MEME'], [255, 255, 255], [0, 0, 0], 400, 200));
+        $poster = imagecreatefromstring(self::poster(['REMOVED', 'MEME'], [255, 255, 255], [0, 0, 0], 400, 200))
+            ?: throw new RuntimeException('Could not decode the poster image.');
         imagecopy($image, $poster, 200, 200, 0, 0, 400, 200);
 
         return self::png($image);

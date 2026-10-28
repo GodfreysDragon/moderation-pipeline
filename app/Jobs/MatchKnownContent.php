@@ -7,6 +7,7 @@ use App\Enums\Outcome;
 use App\Enums\PipelineStage;
 use App\Enums\StepStatus;
 use App\Jobs\Concerns\RecordsPipelineStep;
+use App\Jobs\Concerns\SendsFailuresToReview;
 use App\Models\BlockedHash;
 use App\Models\PolicyVersion;
 use App\Models\Submission;
@@ -21,13 +22,18 @@ use Illuminate\Foundation\Queue\Queueable;
  */
 class MatchKnownContent implements ShouldQueue
 {
-    use Queueable, RecordsPipelineStep;
+    use Queueable, RecordsPipelineStep, SendsFailuresToReview;
 
     public int $tries = 3;
 
     public function __construct(public Submission $submission)
     {
         $this->onQueue('moderation');
+    }
+
+    protected function stage(): PipelineStage
+    {
+        return PipelineStage::MatchKnown;
     }
 
     public function handle(ModerationService $moderation): void
@@ -57,17 +63,17 @@ class MatchKnownContent implements ShouldQueue
         if ($match === null) {
             // Linear scan is fine for thousands of hashes; a BK-tree or multi-index
             // hashing would be the next step for millions.
-            BlockedHash::query()->select(['id', 'dhash', 'category', 'source_submission_id'])->chunkById(1000, function ($hashes) use ($submission, &$match, &$distance, &$checked) {
-                foreach ($hashes as $hash) {
-                    $checked++;
-                    $d = PerceptualHash::distance($submission->dhash, $hash->dhash);
+            $hashes = BlockedHash::query()->select(['id', 'dhash', 'category', 'source_submission_id'])->lazyById(1000);
 
-                    if ($distance === null || $d < $distance) {
-                        $distance = $d;
-                        $match = $hash;
-                    }
+            foreach ($hashes as $hash) {
+                $checked++;
+                $d = PerceptualHash::distance($submission->dhash, $hash->dhash);
+
+                if ($distance === null || $d < $distance) {
+                    $distance = $d;
+                    $match = $hash;
                 }
-            });
+            }
         }
 
         $isMatch = $match !== null && $distance !== null && $distance <= $maxDistance;
@@ -82,7 +88,7 @@ class MatchKnownContent implements ShouldQueue
         ]);
 
         if ($isMatch) {
-            $moderation->finalize($submission, Outcome::Reject, DecisionSource::Blocklist, $match->category?->value ?? 'known_content');
+            $moderation->finalize($submission, Outcome::Reject, DecisionSource::Blocklist, $match->category->value ?? 'known_content');
         }
     }
 }

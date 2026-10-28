@@ -110,7 +110,7 @@ class PolicyController extends Controller
 
         validator($validated)->after(function (Validator $validator) use ($validated) {
             foreach ($validated['thresholds'] as $category => $limits) {
-                if (isset($limits['reject']) && $limits['reject'] !== null && (float) $limits['reject'] < (float) $limits['review']) {
+                if (isset($limits['reject']) && (float) $limits['reject'] < (float) $limits['review']) {
                     $validator->errors()->add("thresholds.{$category}.reject", 'The reject threshold must be at or above the review threshold.');
                 }
             }
@@ -122,7 +122,7 @@ class PolicyController extends Controller
             $limits = $validated['thresholds'][$category->value];
             $thresholds[$category->value] = [
                 'review' => round((float) $limits['review'], 3),
-                'reject' => isset($limits['reject']) && $limits['reject'] !== null ? round((float) $limits['reject'], 3) : null,
+                'reject' => isset($limits['reject']) ? round((float) $limits['reject'], 3) : null,
             ];
         }
 

@@ -19,11 +19,18 @@ trait RecordsPipelineStep
     {
         $this->stepStartedAt = microtime(true);
 
+        // An earlier attempt that crashed mid-stage never finished its row.
+        PipelineStep::query()
+            ->where('submission_id', $submission->id)
+            ->where('stage', $stage)
+            ->where('status', StepStatus::Running)
+            ->update(['status' => StepStatus::Failed, 'error' => 'The attempt did not finish.', 'finished_at' => now()]);
+
         return PipelineStep::create([
             'submission_id' => $submission->id,
             'stage' => $stage,
             'status' => StepStatus::Running,
-            'attempt' => method_exists($this, 'attempts') ? max(1, $this->attempts()) : 1,
+            'attempt' => max(1, $this->attempts()),
             'started_at' => now(),
         ]);
     }

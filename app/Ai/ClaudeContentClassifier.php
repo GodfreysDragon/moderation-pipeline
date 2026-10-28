@@ -3,7 +3,9 @@
 namespace App\Ai;
 
 use Anthropic\Beta\Messages\BetaBase64ImageSource;
+use Anthropic\Beta\Messages\BetaBase64ImageSource\MediaType;
 use Anthropic\Beta\Messages\BetaImageBlockParam;
+use Anthropic\Beta\Messages\BetaTextBlock;
 use Anthropic\Beta\Messages\BetaTextBlockParam;
 use Anthropic\Client;
 use App\Ai\Contracts\ContentClassifier;
@@ -32,9 +34,12 @@ class ClaudeContentClassifier implements ContentClassifier
     {
         $content = [];
 
-        if ($input->hasImage()) {
+        if ($input->imageBytes !== null) {
+            $mediaType = MediaType::tryFrom((string) $input->imageMime)
+                ?? throw new UnexpectedValueException("Unsupported image type for classification: {$input->imageMime}.");
+
             $content[] = BetaImageBlockParam::with(
-                source: BetaBase64ImageSource::with(data: base64_encode($input->imageBytes), mediaType: $input->imageMime),
+                source: BetaBase64ImageSource::with(data: base64_encode($input->imageBytes), mediaType: $mediaType),
             );
         }
 
@@ -59,7 +64,7 @@ class ClaudeContentClassifier implements ContentClassifier
         }
 
         foreach ($message->content as $block) {
-            if ($block->type === 'text') {
+            if ($block instanceof BetaTextBlock) {
                 try {
                     return Classification::fromArray(
                         json_decode($block->text, true, flags: JSON_THROW_ON_ERROR),

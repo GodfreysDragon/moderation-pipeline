@@ -34,7 +34,7 @@ class ModerationMetrics
             ->get(['id', 'status', 'decision_source', 'decision_reason', 'created_at', 'decided_at']);
 
         $decided = $submissions->filter(fn (Submission $s) => $s->status->isFinal());
-        $automated = $decided->filter(fn (Submission $s) => $s->decision_source?->isAutomated());
+        $automated = $decided->filter(fn (Submission $s) => $s->decision_source?->isAutomated() === true);
 
         $tasks = ReviewTask::query()
             ->where('created_at', '>=', $since)
@@ -53,9 +53,9 @@ class ModerationMetrics
             'blocklist_hits' => $submissions->where('decision_source', DecisionSource::Blocklist)->count(),
             'queue' => $this->queue(),
             'timing' => [
-                'automated_minutes_p50' => $this->percentile($this->minutesToDecision($automated), 50),
-                'human_minutes_p50' => $this->percentile($this->minutesToDecision($decided->diff($automated)), 50),
-                'handling_seconds_p50' => $this->percentile($this->handlingSeconds($tasks), 50),
+                'automated_minutes_p50' => $this->percentile($this->minutesToDecision($automated)->all(), 50),
+                'human_minutes_p50' => $this->percentile($this->minutesToDecision($decided->diff($automated))->all(), 50),
+                'handling_seconds_p50' => $this->percentile($this->handlingSeconds($tasks)->all(), 50),
             ],
             'audit' => $this->audit($tasks),
             'appeals' => $this->appeals($tasks),
@@ -101,7 +101,7 @@ class ModerationMetrics
 
         foreach ([Outcome::Approve, Outcome::Reject] as $outcome) {
             $checked = $audits->where('automated_outcome', $outcome);
-            $agreed = $checked->filter(fn (ReviewTask $t) => $t->agreedWithAutomation())->count();
+            $agreed = $checked->filter(fn (ReviewTask $t) => $t->agreedWithAutomation() === true)->count();
             $result[$outcome->value] = ['checked' => $checked->count(), 'agreed' => $agreed, 'precision' => $this->ratio($agreed, $checked->count())];
         }
 
@@ -174,7 +174,7 @@ class ModerationMetrics
     {
         $rejected = $decided->where('status', SubmissionStatus::Rejected);
 
-        return collect(Category::cases())
+        $rows = collect(Category::cases())
             ->map(fn (Category $c) => [
                 'category' => $c->value,
                 'label' => $c->label(),
@@ -182,8 +182,9 @@ class ModerationMetrics
                 'human' => $rejected->filter(fn (Submission $s) => $s->decision_reason === $c->value && ! $s->decision_source?->isAutomated())->count(),
             ])
             ->sortByDesc(fn (array $row) => $row['auto'] + $row['human'])
-            ->values()
             ->all();
+
+        return array_values($rows);
     }
 
     /**
@@ -195,7 +196,7 @@ class ModerationMetrics
             ->where('started_at', '>=', $since)
             ->get(['stage', 'status', 'duration_ms']);
 
-        return collect(PipelineStage::cases())->map(function (PipelineStage $stage) use ($steps) {
+        return array_map(function (PipelineStage $stage) use ($steps) {
             $runs = $steps->where('stage', $stage);
             $durations = $runs->where('status', StepStatus::Succeeded)->pluck('duration_ms')->filter(fn ($ms) => $ms !== null);
 
@@ -205,10 +206,10 @@ class ModerationMetrics
                 'runs' => $runs->count(),
                 'failed' => $runs->where('status', StepStatus::Failed)->count(),
                 'skipped' => $runs->where('status', StepStatus::Skipped)->count(),
-                'p50_ms' => $this->percentile($durations, 50),
-                'p95_ms' => $this->percentile($durations, 95),
+                'p50_ms' => $this->percentile($durations->all(), 50),
+                'p95_ms' => $this->percentile($durations->all(), 95),
             ];
-        })->all();
+        }, PipelineStage::cases());
     }
 
     /**
@@ -238,18 +239,18 @@ class ModerationMetrics
     /**
      * Nearest-rank percentile.
      *
-     * @param  Collection<int, int|float>  $values
+     * @param  array<int|float>  $values
      */
-    private function percentile(Collection $values, int $percentile): ?int
+    private function percentile(array $values, int $percentile): ?int
     {
-        if ($values->isEmpty()) {
+        if ($values === []) {
             return null;
         }
 
-        $sorted = $values->sort()->values();
-        $index = max(0, (int) ceil($percentile / 100 * $sorted->count()) - 1);
+        sort($values);
+        $index = max(0, (int) ceil($percentile / 100 * count($values)) - 1);
 
-        return (int) round($sorted[$index]);
+        return (int) round($values[$index]);
     }
 
     private function ratio(int $part, int $whole): ?float

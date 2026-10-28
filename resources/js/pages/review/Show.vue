@@ -55,11 +55,12 @@ setLayoutProps({
 const why = computed(
     () =>
         ({
-            triage:
-                props.submission.ai?.error !== null &&
-                props.submission.ai?.error !== undefined
-                    ? 'The AI stage could not score this item, so a person decides.'
-                    : 'The scores fell between the review and reject thresholds.',
+            triage: props.task.note
+                ? 'A pipeline stage failed on this item, so a person decides.'
+                : props.submission.ai?.error !== null &&
+                    props.submission.ai?.error !== undefined
+                  ? 'The AI stage could not score this item, so a person decides.'
+                  : 'The scores fell between the review and reject thresholds.',
             escalation: 'A moderator handed this up for an admin decision.',
             appeal: 'The uploader disputes the rejection. You did not make the original decision.',
             audit: `A random QA sample: the pipeline ${props.task.automated_outcome === 'approve' ? 'approved' : 'rejected'} this automatically. Decide independently; disagreeing overturns it.`,
@@ -203,7 +204,11 @@ const canEscalate = computed(() => props.task.kind !== 'escalation');
                         <p
                             class="mb-1 text-xs font-medium text-muted-foreground"
                         >
-                            Escalation note
+                            {{
+                                task.kind === 'escalation'
+                                    ? 'Escalation note'
+                                    : 'Pipeline note'
+                            }}
                         </p>
                         “{{ task.note }}”
                     </div>

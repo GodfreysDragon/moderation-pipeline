@@ -8,6 +8,7 @@ use App\Enums\PipelineStage;
 use App\Enums\StepStatus;
 use App\Exceptions\UnprocessableMediaException;
 use App\Jobs\Concerns\RecordsPipelineStep;
+use App\Jobs\Concerns\SendsFailuresToReview;
 use App\Models\Submission;
 use App\Moderation\ModerationService;
 use App\Support\MediaSanitizer;
@@ -21,13 +22,18 @@ use Throwable;
  */
 class PrepareMedia implements ShouldQueue
 {
-    use Queueable, RecordsPipelineStep;
+    use Queueable, RecordsPipelineStep, SendsFailuresToReview;
 
     public int $tries = 3;
 
     public function __construct(public Submission $submission)
     {
         $this->onQueue('moderation');
+    }
+
+    protected function stage(): PipelineStage
+    {
+        return PipelineStage::Prepare;
     }
 
     public function handle(MediaSanitizer $sanitizer, ModerationService $moderation): void

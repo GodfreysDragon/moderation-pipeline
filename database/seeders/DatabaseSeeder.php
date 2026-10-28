@@ -315,7 +315,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $submission->update(['policy_outcome' => $result->outcome, 'policy_version_id' => $policy->id]);
-        $age = $createdAt->diffInMinutes($now);
+        $age = (int) $createdAt->diffInMinutes($now);
 
         if ($result->outcome === Outcome::Review) {
             $submission->update(['status' => SubmissionStatus::PendingReview, 'decision_reason' => $result->reason]);
@@ -383,7 +383,7 @@ class DatabaseSeeder extends Seeder
         }
 
         $reject = mt_rand(1, 100) <= (int) round($top * 100);
-        $reason = $reject ? ($submission->topCategory()?->value ?? 'other') : null;
+        $reason = $reject ? ($submission->topCategory()->value ?? 'other') : null;
 
         $task->update([
             'claimed_by' => $moderator->id, 'claimed_at' => $claimedAt,
@@ -417,7 +417,7 @@ class DatabaseSeeder extends Seeder
         $resolvedAt = $decidedAt->addMinutes(mt_rand(30, 600));
         $agrees = mt_rand(1, 100) <= ($automated === Outcome::Approve ? 97 : 92);
         $decision = $agrees === ($automated === Outcome::Approve) ? Decision::Approve : Decision::Reject;
-        $reason = $decision === Decision::Reject ? ($submission->topCategory()?->value ?? 'other') : null;
+        $reason = $decision === Decision::Reject ? ($submission->topCategory()->value ?? 'other') : null;
 
         $task->update([
             'claimed_by' => $moderator->id, 'claimed_at' => $resolvedAt->subSeconds(mt_rand(20, 120)),

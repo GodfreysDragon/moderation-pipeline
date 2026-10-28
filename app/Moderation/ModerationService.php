@@ -6,9 +6,12 @@ use App\Enums\Category;
 use App\Enums\Decision;
 use App\Enums\DecisionSource;
 use App\Enums\Outcome;
+use App\Enums\PipelineStage;
 use App\Enums\SubmissionStatus;
 use App\Enums\TaskKind;
+use App\Exceptions\ClaimLostException;
 use App\Models\BlockedHash;
+use App\Models\PipelineStep;
 use App\Models\ReviewTask;
 use App\Models\Submission;
 use App\Models\User;
@@ -118,7 +121,11 @@ class ModerationService
             return $held;
         }
 
-        $kinds = $kind ? array_intersect([$kind], $this->kindsFor($user)) : $this->kindsFor($user);
+        $kinds = $this->kindsFor($user);
+
+        if ($kind !== null) {
+            $kinds = in_array($kind, $kinds, true) ? [$kind] : [];
+        }
 
         if ($kinds === []) {
             return null;
@@ -196,14 +203,27 @@ class ModerationService
         DB::transaction(function () use ($task, $user, $decision, $reason, $note, $blockImage) {
             $submission = $task->submission()->lockForUpdate()->firstOrFail();
 
-            $task->update([
-                'decision' => $decision,
-                'reason' => $reason,
-                'decision_note' => $note,
-                'resolved_by' => $user->id,
-                'resolved_at' => now(),
-                'claim_expires_at' => null,
-            ]);
+            // Resolve only if the claim is still live in the database: a double submit,
+            // or a lease that lapsed and was taken by someone else, must not decide twice.
+            $resolved = ReviewTask::query()
+                ->whereKey($task->id)
+                ->open()
+                ->where('claimed_by', $user->id)
+                ->where('claim_expires_at', '>', now())
+                ->update([
+                    'decision' => $decision,
+                    'reason' => $reason,
+                    'decision_note' => $note,
+                    'resolved_by' => $user->id,
+                    'resolved_at' => now(),
+                    'claim_expires_at' => null,
+                ]) === 1;
+
+            $task->refresh();
+
+            if (! $resolved) {
+                throw new ClaimLostException('Your claim on this task expired or was taken.');
+            }
 
             if ($decision === Decision::Escalate) {
                 $this->openTask(
@@ -233,8 +253,7 @@ class ModerationService
             }
 
             if ($outcome === Outcome::Approve) {
-                // A person cleared it, so it must not keep matching future uploads.
-                BlockedHash::query()->where('source_submission_id', $submission->id)->delete();
+                $this->unblockImage($submission);
             }
         });
     }
@@ -261,6 +280,28 @@ class ModerationService
 
             return $this->openTask($submission, TaskKind::Appeal, $priority, Outcome::Reject, $previousDecider);
         });
+    }
+
+    /**
+     * A person cleared the image, so it must not keep matching future uploads: drop
+     * hashes it created, and the blocklist entry that rejected it if it was a match.
+     */
+    private function unblockImage(Submission $submission): void
+    {
+        $matchedIds = $submission->steps()
+            ->where('stage', PipelineStage::MatchKnown)
+            ->get()
+            ->map(fn (PipelineStep $step) => $step->detail['blocked_hash_id'] ?? null)
+            ->filter()
+            ->values()
+            ->all();
+
+        BlockedHash::query()
+            ->where(fn ($q) => $q
+                ->where('source_submission_id', $submission->id)
+                ->orWhereIn('id', $matchedIds)
+                ->when($submission->sha256 !== null, fn ($q) => $q->orWhere('sha256', $submission->sha256)))
+            ->delete();
     }
 
     private function blockImage(Submission $submission, User $user, ?Category $category): void

@@ -9,6 +9,7 @@ use App\Enums\StepStatus;
 use App\Enums\SubmissionStatus;
 use App\Enums\TaskKind;
 use App\Jobs\Concerns\RecordsPipelineStep;
+use App\Jobs\Concerns\SendsFailuresToReview;
 use App\Models\PolicyVersion;
 use App\Models\Submission;
 use App\Moderation\ModerationService;
@@ -25,13 +26,18 @@ use Illuminate\Support\Lottery;
  */
 class ApplyPolicy implements ShouldQueue
 {
-    use Queueable, RecordsPipelineStep;
+    use Queueable, RecordsPipelineStep, SendsFailuresToReview;
 
     public int $tries = 3;
 
     public function __construct(public Submission $submission)
     {
         $this->onQueue('moderation');
+    }
+
+    protected function stage(): PipelineStage
+    {
+        return PipelineStage::ApplyPolicy;
     }
 
     public function handle(PolicyEngine $engine, ModerationService $moderation): void

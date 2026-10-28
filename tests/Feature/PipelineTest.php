@@ -1,9 +1,11 @@
 <?php
 
+use Anthropic\Core\Exceptions\RetryableException;
 use App\Ai\Contracts\ContentClassifier;
 use App\Ai\Data\Classification;
 use App\Ai\Data\ClassificationInput;
 use App\Ai\FakeContentClassifier;
+use App\Enums\Decision;
 use App\Enums\DecisionSource;
 use App\Enums\Outcome;
 use App\Enums\PipelineStage;
@@ -11,8 +13,10 @@ use App\Enums\StepStatus;
 use App\Enums\SubmissionStatus;
 use App\Enums\TaskKind;
 use App\Jobs\ClassifyContent;
+use App\Jobs\MatchKnownContent;
 use App\Jobs\PrepareMedia;
 use App\Models\BlockedHash;
+use App\Models\PipelineStep;
 use App\Models\PolicyVersion;
 use App\Models\Submission;
 use App\Models\User;
@@ -206,4 +210,83 @@ test('the upload form needs an image or a caption', function () {
     $this->actingAs($this->user)
         ->post(route('submissions.store'), ['image' => UploadedFile::fake()->create('notes.pdf', 10, 'application/pdf')])
         ->assertSessionHasErrors('image');
+});
+
+test('errors the SDK treats as retryable are left for the queue to retry', function () {
+    $this->app->instance(ContentClassifier::class, new class implements ContentClassifier
+    {
+        public function classify(ClassificationInput $input): Classification
+        {
+            throw new RetryableException('Overloaded.');
+        }
+    });
+    $submission = Submission::factory()->for($this->user)->create(['caption' => 'Hello', 'status' => SubmissionStatus::Processing]);
+
+    expect(fn () => (new ClassifyContent($submission))->handle(app(ContentClassifier::class)))->toThrow(RetryableException::class)
+        ->and($submission->refresh()->ai_error)->toBeNull()
+        ->and($submission->steps()->sole()->detail['retrying'])->toBeTrue();
+});
+
+test('a stage that runs out of retries sends the item to review instead of leaving it processing', function () {
+    $submission = Submission::factory()->for($this->user)->create(['caption' => 'Hello', 'status' => SubmissionStatus::Processing]);
+    $step = PipelineStep::create([
+        'submission_id' => $submission->id,
+        'stage' => PipelineStage::MatchKnown,
+        'status' => StepStatus::Running,
+        'attempt' => 3,
+        'started_at' => now(),
+    ]);
+
+    (new MatchKnownContent($submission))->failed(new RuntimeException('Database went away.'));
+
+    $task = $submission->tasks()->sole();
+    expect($submission->refresh()->status)->toBe(SubmissionStatus::PendingReview)
+        ->and($submission->decision_reason)->toBe('pipeline_error')
+        ->and($task->kind)->toBe(TaskKind::Triage)
+        ->and($task->note)->toContain('Match known content')->toContain('Database went away.')
+        ->and($step->refresh()->status)->toBe(StepStatus::Failed);
+});
+
+test('a late failure does not reopen an item that was already decided', function () {
+    $submission = Submission::factory()->for($this->user)->decided(Outcome::Approve)->create();
+
+    (new MatchKnownContent($submission))->failed(new RuntimeException('Late.'));
+
+    expect($submission->refresh()->status)->toBe(SubmissionStatus::Approved)
+        ->and($submission->tasks()->count())->toBe(0);
+});
+
+test('a retried stage closes the row its crashed attempt left running', function () {
+    $submission = submit(['caption' => 'A quiet morning at the lake.']);
+    $abandoned = PipelineStep::create([
+        'submission_id' => $submission->id,
+        'stage' => PipelineStage::Classify,
+        'status' => StepStatus::Running,
+        'attempt' => 1,
+        'started_at' => now(),
+    ]);
+    $submission->update(['status' => SubmissionStatus::Processing]);
+
+    (new ClassifyContent($submission))->handle(app(ContentClassifier::class));
+
+    expect($abandoned->refresh()->status)->toBe(StepStatus::Failed)
+        ->and($abandoned->error)->toBe('The attempt did not finish.');
+});
+
+test('winning an appeal against a blocklist match unblocks the image', function () {
+    $first = submit(['image' => UploadedFile::fake()->createWithContent('a.png', Images::png(640, 480, seed: 5))]);
+    BlockedHash::create(['sha256' => $first->sha256, 'dhash' => $first->dhash, 'source_submission_id' => $first->id]);
+    $copy = submit(['image' => UploadedFile::fake()->createWithContent('copy.jpg', Images::jpeg(300, 225, seed: 5))]);
+    expect($copy->status)->toBe(SubmissionStatus::Rejected);
+
+    $moderation = app(ModerationService::class);
+    $moderator = User::factory()->moderator()->create();
+    $appeal = $moderation->appeal($copy, 'This is my own photo of my own garden.');
+    $moderation->claim($appeal, $moderator);
+    $moderation->decide($appeal, $moderator, Decision::Approve, null);
+
+    $again = submit(['image' => UploadedFile::fake()->createWithContent('copy.jpg', Images::jpeg(300, 225, seed: 5))]);
+
+    expect(BlockedHash::query()->count())->toBe(0)
+        ->and($again->status)->toBe(SubmissionStatus::Approved);
 });

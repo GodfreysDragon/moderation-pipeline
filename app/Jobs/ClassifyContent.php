@@ -3,8 +3,11 @@
 namespace App\Jobs;
 
 use Anthropic\Core\Exceptions\APIConnectionException;
+use Anthropic\Core\Exceptions\APIStatusException;
+use Anthropic\Core\Exceptions\ConflictException;
 use Anthropic\Core\Exceptions\InternalServerException;
 use Anthropic\Core\Exceptions\RateLimitException;
+use Anthropic\Core\Exceptions\RetryableException;
 use App\Ai\Contracts\ContentClassifier;
 use App\Ai\Data\ClassificationInput;
 use App\Ai\Exceptions\ClassifierRefusedException;
@@ -80,12 +83,14 @@ class ClassifyContent implements ShouldQueue
                 imageMime: $submission->mime,
                 filename: $submission->original_filename,
             ));
-        } catch (RateLimitException|InternalServerException|APIConnectionException $e) {
-            // Transient: the SDK already retried; let the queue retry later with backoff.
-            $this->finishStep($step, StepStatus::Failed, ['retrying' => true], $e->getMessage());
-
-            throw $e;
         } catch (Throwable $e) {
+            if (self::isTransient($e)) {
+                // The SDK already retried; let the queue retry later with backoff.
+                $this->finishStep($step, StepStatus::Failed, ['retrying' => true], $e->getMessage());
+
+                throw $e;
+            }
+
             // Refusals, bad requests, auth errors and malformed output won't get
             // better on retry. Record it and let the policy stage route it to a person.
             $this->finishStep($step, StepStatus::Failed, [
@@ -112,6 +117,20 @@ class ClassifyContent implements ShouldQueue
             'top_category' => $top->keys()->first(),
             'top_score' => $top->first(),
         ]);
+    }
+
+    /**
+     * The errors the SDK itself treats as retryable (429, 408, 409, 5xx including
+     * 529 overloaded, connection failures and timeouts), once its own retries ran out.
+     */
+    private static function isTransient(Throwable $e): bool
+    {
+        return $e instanceof RateLimitException
+            || $e instanceof InternalServerException
+            || $e instanceof ConflictException
+            || $e instanceof APIConnectionException
+            || $e instanceof RetryableException
+            || ($e instanceof APIStatusException && $e->status === 408);
     }
 
     /**

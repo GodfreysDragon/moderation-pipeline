@@ -5,6 +5,7 @@ use App\Enums\DecisionSource;
 use App\Enums\Outcome;
 use App\Enums\SubmissionStatus;
 use App\Enums\TaskKind;
+use App\Exceptions\ClaimLostException;
 use App\Models\BlockedHash;
 use App\Models\ReviewTask;
 use App\Models\Submission;
@@ -191,4 +192,37 @@ test('releasing a task puts it back in the queue', function () {
 
     expect($task->refresh()->claimed_by)->toBeNull()
         ->and($this->moderation->claim($task, $this->bob))->toBeTrue();
+});
+
+test('a double submit decides the task only once', function () {
+    $task = ReviewTask::factory()->claimedBy($this->alice)->create();
+    $payload = ['decision' => 'escalate', 'note' => 'Needs an admin to look.'];
+
+    $this->actingAs($this->alice)->post(route('review.decide', $task), $payload)->assertRedirect(route('review.index'));
+    $this->actingAs($this->alice)->post(route('review.decide', $task), $payload)->assertRedirect(route('review.show', $task));
+
+    expect(ReviewTask::query()->where('kind', TaskKind::Escalation)->count())->toBe(1);
+});
+
+test('a stale claim cannot decide a task someone else has taken', function () {
+    $task = ReviewTask::factory()->claimedBy($this->alice)->create();
+    $stale = ReviewTask::query()->findOrFail($task->id);
+
+    // Alice's lease lapsed and Bob took the task, but her page still holds the old claim.
+    ReviewTask::query()->whereKey($task->id)->update(['claimed_by' => $this->bob->id]);
+
+    expect(fn () => $this->moderation->decide($stale, $this->alice, Decision::Approve, null))->toThrow(ClaimLostException::class)
+        ->and($task->refresh()->resolved_at)->toBeNull()
+        ->and($task->claimed_by)->toBe($this->bob->id)
+        ->and($task->submission->refresh()->status)->not->toBe(SubmissionStatus::Approved);
+});
+
+test('deciding the same task twice from a stale copy fails the second time', function () {
+    $task = ReviewTask::factory()->claimedBy($this->alice)->create();
+    $copy = ReviewTask::query()->findOrFail($task->id);
+
+    $this->moderation->decide($task, $this->alice, Decision::Escalate, null, 'Needs an admin.');
+
+    expect(fn () => $this->moderation->decide($copy, $this->alice, Decision::Escalate, null, 'Needs an admin.'))->toThrow(ClaimLostException::class)
+        ->and(ReviewTask::query()->where('kind', TaskKind::Escalation)->count())->toBe(1);
 });
