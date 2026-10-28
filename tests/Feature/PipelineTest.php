@@ -22,6 +22,7 @@ use App\Models\Submission;
 use App\Models\User;
 use App\Moderation\ModerationService;
 use App\Support\MediaSanitizer;
+use Database\Seeders\Demo\SampleImages;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Lottery;
@@ -193,6 +194,19 @@ test('a resized near-duplicate of a blocked image is caught too', function () {
         ->and($copy->decision_reason)->toBe('known_content')
         ->and($copy->steps()->where('stage', PipelineStage::MatchKnown)->sole()->detail['match'])->toBe('near_duplicate')
         ->and($other->status)->toBe(SubmissionStatus::Approved);
+});
+
+test('the resized meme sample is caught as a near-duplicate of the known meme', function () {
+    $first = submit(['image' => UploadedFile::fake()->createWithContent('known-bad.png', SampleImages::knownBad())]);
+    BlockedHash::create(['sha256' => $first->sha256, 'dhash' => $first->dhash, 'source_submission_id' => $first->id]);
+    $this->classifier->calls = 0;
+
+    $copy = submit(['image' => UploadedFile::fake()->createWithContent('known-bad-resized.jpg', SampleImages::knownBadResized())]);
+
+    expect($copy->status)->toBe(SubmissionStatus::Rejected)
+        ->and($copy->sha256)->not->toBe($first->sha256)
+        ->and($copy->steps()->where('stage', PipelineStage::MatchKnown)->sole()->detail['match'])->toBe('near_duplicate')
+        ->and($this->classifier->calls)->toBe(0);
 });
 
 test('an upload that is not really an image is rejected by the prepare stage', function () {

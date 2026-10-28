@@ -68,7 +68,8 @@ Demo accounts (password `password`):
 | member@example.com    | Uploader                                          |
 
 Open **Submit content** and use the sample buttons. Each one follows a different path through the pipeline:
-auto-approve, auto-reject, human review, hash-blocklist match, and a self-harm post that always reaches a person.
+auto-approve, auto-reject, human review, an exact and a near-duplicate blocklist match, a text-only insult that needs a
+judgement call, and a self-harm post that always reaches a person.
 
 ### Configuration
 

@@ -25,6 +25,7 @@ final class SampleImages
             'crypto-giveaway.png' => self::poster(['CRYPTO', 'GIVEAWAY', '500% RETURNS', 'LINK IN BIO'], [17, 17, 17], [250, 190, 40]),
             'parts-for-sale.png' => self::poster(['PARTS', 'FOR SALE', 'NO PAPERS', 'DM TO BUY'], [90, 20, 20], [255, 255, 255]),
             'known-bad.png' => self::knownBad(),
+            'known-bad-resized.jpg' => self::knownBadResized(),
         ];
     }
 
@@ -137,6 +138,23 @@ final class SampleImages
         imagecopy($image, $poster, 200, 200, 0, 0, 400, 200);
 
         return self::png($image);
+    }
+
+    /**
+     * The known meme shrunk and re-saved as a JPEG: different bytes, so the
+     * SHA-256 misses, but the perceptual hash still lands within the blocklist distance.
+     */
+    public static function knownBadResized(): string
+    {
+        $original = imagecreatefromstring(self::knownBad())
+            ?: throw new RuntimeException('Could not decode the known-bad image.');
+        $image = imagescale($original, 560, 420, IMG_BICUBIC)
+            ?: throw new RuntimeException('Could not resize the known-bad image.');
+
+        ob_start();
+        imagejpeg($image, null, 80);
+
+        return (string) ob_get_clean();
     }
 
     private static function png(GdImage $image): string

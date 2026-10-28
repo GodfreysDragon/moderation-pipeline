@@ -92,6 +92,12 @@ const samples = [
         caption: 'Reposting this classic.',
     },
     {
+        label: 'Resized meme',
+        hint: 'Blocked as a near-duplicate',
+        file: 'known-bad-resized.jpg',
+        caption: 'Found a smaller copy of this one.',
+    },
+    {
         label: 'Personal attack',
         hint: 'Text only, human review',
         file: null,
@@ -145,7 +151,7 @@ const submit = () => form.submit(store());
             <h2 id="samples-heading" class="text-sm font-medium">
                 Try a sample
             </h2>
-            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <button
                     v-for="sample in samples"
                     :key="sample.label"
