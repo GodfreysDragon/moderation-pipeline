@@ -84,9 +84,17 @@ and `[refuse]` simulates a model refusal, which is handy for demos and tests.
 ## Tests
 
 ```bash
-php artisan test        # 100 tests: pipeline, review workflow, policy, access, SDK request shape
+php artisan test        # 108 tests: pipeline, review workflow, policy, access, SDK request shape
 npm run types:check
 npm run check
+```
+
+`tests/e2e/smoke.mjs` drives the real app in an installed Edge or Chrome. It runs every sample through the queued
+pipeline, appeals, reviews and escalates, backtests the policy, and checks the staff pages in light, dark and phone
+widths. Run it against a freshly seeded app with workers running (`composer run dev`):
+
+```bash
+E2E_URL=http://127.0.0.1:8000 npm run test:e2e   # screenshots go to storage/e2e
 ```
 
 ## Project layout

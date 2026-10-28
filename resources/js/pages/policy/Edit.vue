@@ -136,7 +136,9 @@ const errorOf = (key: string) =>
             :description="`Version ${policy.id}. Every decision records the version it used, so changes never rewrite history.`"
         />
 
-        <div class="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div
+            class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]"
+        >
             <form class="min-w-0 space-y-6" @submit.prevent="save">
                 <Card>
                     <CardHeader>

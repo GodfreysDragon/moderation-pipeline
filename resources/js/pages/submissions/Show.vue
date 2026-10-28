@@ -79,7 +79,9 @@ const sendAppeal = () =>
 <template>
     <Head :title="`Submission #${submission.id}`" />
 
-    <div class="grid gap-6 p-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+    <div
+        class="grid grid-cols-1 gap-6 p-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]"
+    >
         <div class="min-w-0 space-y-6">
             <Card class="overflow-hidden py-0">
                 <div class="flex min-h-48 items-center justify-center bg-muted">

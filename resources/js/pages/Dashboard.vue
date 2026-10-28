@@ -224,7 +224,9 @@ const t = computed(() => props.metrics.totals);
             </Card>
         </div>
 
-        <div class="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div
+            class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]"
+        >
             <Card>
                 <CardHeader>
                     <CardTitle>Submissions per day</CardTitle>
@@ -323,7 +325,9 @@ const t = computed(() => props.metrics.totals);
             </Card>
         </div>
 
-        <div class="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div
+            class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]"
+        >
             <Card>
                 <CardHeader>
                     <CardTitle>Pipeline stages</CardTitle>
