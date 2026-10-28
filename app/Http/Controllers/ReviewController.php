@@ -87,6 +87,10 @@ class ReviewController extends Controller
         Gate::authorize('moderate');
 
         $user = $request->user();
+
+        // Escalations are for admins only, even read-only: the note is addressed to them.
+        abort_unless(in_array($task->kind, $this->moderation->kindsFor($user), true), 403);
+
         $task->load(['submission.steps', 'submission.tasks.claimant', 'submission.tasks.resolver', 'submission.user', 'submission.decider', 'submission.policyVersion', 'claimant']);
 
         return Inertia::render('review/Show', [
@@ -169,7 +173,8 @@ class ReviewController extends Controller
                 $decision,
                 $validated['reason'] ?? null,
                 $validated['note'] ?? null,
-                $validated['block_image'] ?? true,
+                // An audit grades the automation; adding to the blocklist is a separate, deliberate choice.
+                $validated['block_image'] ?? $task->kind !== TaskKind::Audit,
             );
         } catch (ClaimLostException) {
             Inertia::flash('toast', ['type' => 'error', 'message' => 'Your claim on this task expired or was taken. Claim it again to decide.']);

@@ -97,7 +97,8 @@ const form = useForm({
     decision: '' as '' | 'approve' | 'reject' | 'escalate',
     reason: '',
     note: '',
-    block_image: true,
+    // Audits measure the automation, so blocking re-uploads is opt-in there.
+    block_image: props.task.kind !== 'audit',
     next: true,
 });
 
@@ -274,9 +275,6 @@ const canEscalate = computed(() => props.task.kind !== 'escalation');
                         <p v-else-if="task.excluded" class="text-sm">
                             You made the decision being appealed, so someone
                             else must review it.
-                        </p>
-                        <p v-else-if="!task.may_work" class="text-sm">
-                            Only admins can decide escalations.
                         </p>
                         <Button v-if="task.can_claim" @click="claimIt">
                             <Lock /> Claim for {{ claimMinutes }} minutes

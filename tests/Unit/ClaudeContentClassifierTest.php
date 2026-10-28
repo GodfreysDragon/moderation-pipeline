@@ -5,6 +5,7 @@ use App\Ai\ClaudeContentClassifier;
 use App\Ai\Data\ClassificationInput;
 use App\Ai\Exceptions\ClassifierRefusedException;
 use App\Enums\Category;
+use App\Jobs\ClassifyContent;
 use GuzzleHttp\Psr7\Response;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestInterface;
@@ -103,3 +104,29 @@ test('a refusal becomes a ClassifierRefusedException', function () {
 test('malformed JSON is reported, not swallowed', function () {
     claudeWith(claudeMessage('not json'))->classify(new ClassificationInput('x'));
 })->throws(UnexpectedValueException::class, 'not valid JSON');
+
+test('API errors are described in one line for moderators', function () {
+    $transport = new class implements ClientInterface
+    {
+        public function sendRequest(RequestInterface $request): ResponseInterface
+        {
+            return new Response(400, ['Content-Type' => 'application/json'], json_encode([
+                'type' => 'error',
+                'error' => ['type' => 'invalid_request_error', 'message' => 'Image exceeds the size limit.'],
+            ]));
+        }
+    };
+    $classifier = new ClaudeContentClassifier(
+        new Client(apiKey: 'sk-test', requestOptions: ['transporter' => $transport, 'maxRetries' => 0]),
+        'claude-opus-5-5',
+    );
+
+    try {
+        $classifier->classify(new ClassificationInput('hello'));
+        $this->fail('Expected an API error.');
+    } catch (Throwable $e) {
+        expect(ClassifyContent::describe($e))
+            ->toBe('The Anthropic API returned HTTP 400 (invalid_request_error): Image exceeds the size limit.')
+            ->and($e->getMessage())->toContain("\n");
+    }
+});

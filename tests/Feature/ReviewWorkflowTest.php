@@ -185,6 +185,29 @@ test('an audit that agrees leaves the automated decision in place', function () 
         ->and($audit->refresh()->agreedWithAutomation())->toBeTrue();
 });
 
+test('confirming an automated rejection in an audit does not block the image unless asked', function () {
+    $submission = Submission::factory()->scored(['spam' => 0.95])->decided(Outcome::Reject)->withImage()->create();
+    $audit = ReviewTask::factory()->for($submission)->kind(TaskKind::Audit, Outcome::Reject)->claimedBy($this->alice)->create();
+
+    $this->actingAs($this->alice)->post(route('review.decide', $audit), ['decision' => 'reject', 'reason' => 'spam']);
+
+    expect(BlockedHash::query()->count())->toBe(0);
+
+    $second = Submission::factory()->scored(['spam' => 0.95])->decided(Outcome::Reject)->withImage()->create();
+    $audit = ReviewTask::factory()->for($second)->kind(TaskKind::Audit, Outcome::Reject)->claimedBy($this->alice)->create();
+
+    $this->actingAs($this->alice)->post(route('review.decide', $audit), ['decision' => 'reject', 'reason' => 'spam', 'block_image' => true]);
+
+    expect(BlockedHash::query()->sole()->sha256)->toBe($second->sha256);
+});
+
+test('moderators cannot open escalations, even read-only', function () {
+    $escalation = ReviewTask::factory()->kind(TaskKind::Escalation)->create(['note' => 'For an admin.']);
+
+    $this->actingAs($this->alice)->get(route('review.show', $escalation))->assertForbidden();
+    $this->actingAs($this->admin)->get(route('review.show', $escalation))->assertOk();
+});
+
 test('releasing a task puts it back in the queue', function () {
     $task = ReviewTask::factory()->claimedBy($this->alice)->create();
 

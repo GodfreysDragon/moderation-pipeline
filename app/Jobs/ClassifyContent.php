@@ -86,7 +86,7 @@ class ClassifyContent implements ShouldQueue
         } catch (Throwable $e) {
             if (self::isTransient($e)) {
                 // The SDK already retried; let the queue retry later with backoff.
-                $this->finishStep($step, StepStatus::Failed, ['retrying' => true], $e->getMessage());
+                $this->finishStep($step, StepStatus::Failed, ['retrying' => true], self::describe($e));
 
                 throw $e;
             }
@@ -96,9 +96,9 @@ class ClassifyContent implements ShouldQueue
             $this->finishStep($step, StepStatus::Failed, [
                 'retrying' => false,
                 'refused' => $e instanceof ClassifierRefusedException,
-            ], $e->getMessage());
+            ], self::describe($e));
 
-            $submission->update(['ai_error' => mb_substr($e->getMessage(), 0, 250)]);
+            $submission->update(['ai_error' => self::describe($e)]);
 
             return;
         }
@@ -134,13 +134,34 @@ class ClassifyContent implements ShouldQueue
     }
 
     /**
+     * One line for moderators. SDK exceptions carry the whole pretty-printed
+     * response body as their message, so use the API's own error text instead.
+     */
+    public static function describe(Throwable $e): string
+    {
+        if ($e instanceof APIStatusException) {
+            $detail = $e->body['error']['message'] ?? null;
+            $type = $e->type !== null ? " ({$e->type->value})" : '';
+
+            $text = "The Anthropic API returned HTTP {$e->status}{$type}".(is_string($detail) && $detail !== '' ? ": {$detail}" : '.');
+        } elseif ($e instanceof APIConnectionException) {
+            $text = 'Could not reach the Anthropic API.';
+        } else {
+            $text = (string) strtok($e->getMessage(), "
+");
+        }
+
+        return mb_substr($text, 0, 250);
+    }
+
+    /**
      * Out of retries. The chain stops here, so run the policy stage directly:
      * with no scores it sends the item to human review.
      */
     public function failed(?Throwable $exception): void
     {
         $this->submission->refresh()->update([
-            'ai_error' => mb_substr('Gave up after retries: '.($exception?->getMessage() ?? 'unknown error'), 0, 250),
+            'ai_error' => mb_substr('Gave up after retries: '.($exception ? self::describe($exception) : 'unknown error'), 0, 250),
         ]);
 
         ApplyPolicy::dispatchSync($this->submission);
