@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowUpRight, ClipboardCheck, Inbox, Scale } from '@lucide/vue';
+import { ArrowUpRight, ClipboardCheck, Inbox, Scale, Users } from '@lucide/vue';
 import type { TaskKind } from '@/types';
 
 defineProps<{ kind: TaskKind }>();
@@ -9,6 +9,7 @@ const kinds = {
     escalation: { label: 'Escalation', icon: ArrowUpRight },
     appeal: { label: 'Appeal', icon: Scale },
     audit: { label: 'QA audit', icon: ClipboardCheck },
+    second_review: { label: 'Second review', icon: Users },
 };
 </script>
 

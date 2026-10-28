@@ -126,6 +126,7 @@ final class SubmissionPresenter
             'kind' => $task->kind->value,
             'kind_label' => $task->kind->label(),
             'priority' => $task->priority,
+            'graphic' => $task->graphic,
             'automated_outcome' => $task->automated_outcome?->value,
             'note' => $task->note,
             'claimed_by' => $task->hasLiveClaim() ? $task->claimant?->name : null,

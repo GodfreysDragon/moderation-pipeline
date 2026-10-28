@@ -304,6 +304,7 @@ const PAGES = [
     ['review-queue', '/review', 'Review queue'],
     ['policy', '/policy', 'Backtest'],
     ['evaluations', '/evaluations', 'New run'],
+    ['reviewers', '/reviewers', 'Agreement between reviewers'],
 ];
 
 for (const mode of MODES) {

@@ -131,6 +131,25 @@ class Submission extends Model
         return $this->image_path !== null;
     }
 
+    /**
+     * Whether a reviewer should see the image blurred first: a high enough sexual,
+     * violence or self-harm score, or no scores at all (nobody has checked it).
+     */
+    public function isGraphic(): bool
+    {
+        if (! $this->hasImage()) {
+            return false;
+        }
+
+        if ($this->ai_scores === null) {
+            return true;
+        }
+
+        $scores = $this->scores();
+
+        return max($scores['sexual'] ?? 0, $scores['violence'] ?? 0, $scores['self_harm'] ?? 0) >= config('moderation.graphic_score');
+    }
+
     public function tokenUsage(): ?TokenUsage
     {
         return $this->ai_input_tokens === null ? null : new TokenUsage(

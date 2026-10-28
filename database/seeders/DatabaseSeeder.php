@@ -133,6 +133,11 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        // Flag tasks that show a graphic image, as ModerationService::openTask does.
+        ReviewTask::query()->with('submission')->each(
+            fn (ReviewTask $task) => $task->updateQuietly(['graphic' => $task->submission->isGraphic()]),
+        );
+
         Model::reguard();
         mt_srand();
     }
@@ -398,8 +403,59 @@ class DatabaseSeeder extends Seeder
             'decided_by' => $moderator->id, 'decided_at' => $resolvedAt, 'updated_at' => $resolvedAt,
         ]);
 
+        $this->maybeSecondReview($task, $submission, $moderator, $resolvedAt, $now);
+
         if ($reject) {
             $this->maybeAppeal($submission, $resolvedAt, $now);
+        }
+    }
+
+    /**
+     * About one triage decision in seven gets a blind second review by a colleague,
+     * agreeing about four times in five; a disagreement goes to the admin, who sides
+     * with one of them. Chosen from the id, so the random stream is untouched.
+     */
+    private function maybeSecondReview(ReviewTask $first, Submission $submission, User $firstReviewer, CarbonImmutable $resolvedAt, CarbonImmutable $now): void
+    {
+        if ($first->kind !== TaskKind::Triage || $submission->id % 7 !== 0) {
+            return;
+        }
+
+        $others = array_values(array_filter($this->moderators, fn (User $m) => $m->id !== $firstReviewer->id));
+        $second = $others[$submission->id % count($others)];
+        $claimedAt = $resolvedAt->addMinutes(20 + $submission->id % 90);
+        $doneAt = $claimedAt->addSeconds(40 + $submission->id % 150);
+
+        if ($doneAt->gt($now)) {
+            return;
+        }
+
+        $agrees = $submission->id % 5 !== 0;
+        $decision = $agrees ? $first->decision : ($first->decision === Decision::Reject ? Decision::Approve : Decision::Reject);
+
+        ReviewTask::create([
+            'submission_id' => $submission->id, 'kind' => TaskKind::SecondReview, 'priority' => $first->priority - 20,
+            'automated_outcome' => Outcome::Review, 'excluded_reviewer_id' => $firstReviewer->id,
+            'reviews_task_id' => $first->id, 'claimed_by' => $second->id, 'claimed_at' => $claimedAt,
+            'decision' => $decision, 'reason' => $decision === Decision::Reject ? $first->reason ?? 'other' : null,
+            'resolved_by' => $second->id, 'resolved_at' => $doneAt, 'created_at' => $resolvedAt, 'updated_at' => $doneAt,
+        ]);
+
+        if (! $agrees) {
+            $settledAt = $doneAt->addMinutes(30 + $submission->id % 60);
+
+            ReviewTask::create([
+                'submission_id' => $submission->id, 'kind' => TaskKind::Escalation, 'priority' => $first->priority + 30,
+                'automated_outcome' => Outcome::Review,
+                'note' => "Two reviewers disagreed: {$firstReviewer->name} chose to {$first->decision?->value}, {$second->name} chose to {$decision->value}.",
+                'created_at' => $doneAt, 'updated_at' => $doneAt,
+                // Recent disagreements are still waiting for the admin.
+                ...($settledAt->lt($now) ? [
+                    'claimed_by' => $this->admin->id, 'claimed_at' => $settledAt->subSeconds(90),
+                    'decision' => $first->decision, 'reason' => $first->reason,
+                    'resolved_by' => $this->admin->id, 'resolved_at' => $settledAt, 'updated_at' => $settledAt,
+                ] : []),
+            ]);
         }
     }
 

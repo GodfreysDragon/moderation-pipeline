@@ -35,14 +35,21 @@ Upload ─► PrepareMedia ─► MatchKnownContent ─► ClassifyContent ─�
   machine). Above a distance of 7 the guarantee no longer holds and it scans everything.
 - **Review tasks:**
 
-    | Task       | When it is created                                                     |
-    | ---------- | ---------------------------------------------------------------------- |
-    | Triage     | The scores fell between the review and reject thresholds.              |
-    | Escalation | A moderator handed the item up; only admins can take it.               |
-    | Appeal     | The uploader disputed a rejection. The original decider can't take it. |
-    | QA audit   | A random sample of automated decisions. Disagreeing overturns them.    |
+    | Task          | When it is created                                                                                        |
+    | ------------- | --------------------------------------------------------------------------------------------------------- |
+    | Triage        | The scores fell between the review and reject thresholds.                                                 |
+    | Escalation    | A moderator handed the item up; only admins can take it.                                                  |
+    | Appeal        | The uploader disputed a rejection. The original decider can't take it.                                    |
+    | QA audit      | A random sample of automated decisions. Disagreeing overturns them.                                       |
+    | Second review | A random 10% of triage decisions, re-decided blind by another moderator. A disagreement goes to an admin. |
 
     Claims are atomic, 10-minute leases.
+
+- **Reviewer wellbeing:** images with a sexual, violence or self-harm score of 0.3 or more (or no scores at all) are
+  blurred in the queue and the review workspace until the reviewer chooses to look. After 40 graphic decisions in 24
+  hours, "Review next" hands that person only non-graphic work. The Reviewers page shows per-person decisions,
+  handling time, appeal overturns, second-review agreement and today's graphic exposure, plus the team's agreement as
+  Cohen's kappa.
 
 - **Policy versions:** thresholds are append-only. Every decision records the version it used. The Policy page
   backtests proposed thresholds against recent items and against human decisions before you save.

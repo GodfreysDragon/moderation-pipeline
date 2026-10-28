@@ -16,6 +16,7 @@ use App\Models\ReviewTask;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Lottery;
 use LogicException;
 
 /**
@@ -48,14 +49,34 @@ class ModerationService
         ?Outcome $automatedOutcome = null,
         ?int $excludedReviewerId = null,
         ?string $note = null,
+        ?int $reviewsTaskId = null,
     ): ReviewTask {
         return $submission->tasks()->create([
             'kind' => $kind,
             'priority' => max(-100, min(200, $basePriority + $kind->priorityBoost())),
+            'graphic' => $submission->isGraphic(),
             'automated_outcome' => $automatedOutcome,
             'excluded_reviewer_id' => $excludedReviewerId,
+            'reviews_task_id' => $reviewsTaskId,
             'note' => $note,
         ]);
+    }
+
+    /**
+     * Graphic items this user decided in the last 24 hours.
+     */
+    public function graphicExposure(User $user): int
+    {
+        return ReviewTask::query()
+            ->where('resolved_by', $user->id)
+            ->where('graphic', true)
+            ->where('resolved_at', '>=', now()->subDay())
+            ->count();
+    }
+
+    public function overGraphicLimit(User $user): bool
+    {
+        return $this->graphicExposure($user) >= config('moderation.graphic_daily_limit');
     }
 
     /**
@@ -71,7 +92,7 @@ class ModerationService
 
         return $user->isAdmin()
             ? TaskKind::cases()
-            : [TaskKind::Triage, TaskKind::Appeal, TaskKind::Audit];
+            : [TaskKind::Triage, TaskKind::Appeal, TaskKind::Audit, TaskKind::SecondReview];
     }
 
     public function mayWork(User $user, ReviewTask $task): bool
@@ -131,12 +152,17 @@ class ModerationService
             return null;
         }
 
+        // Past the daily exposure limit, hand out only non-graphic work. The user can
+        // still open a graphic task deliberately from the queue.
+        $sparing = $this->overGraphicLimit($user);
+
         // Retry a few times: a candidate may be taken between the read and the claim.
         for ($round = 0; $round < 3; $round++) {
             $candidates = ReviewTask::query()
                 ->available()
                 ->whereIn('kind', array_map(fn (TaskKind $k) => $k->value, $kinds))
                 ->where(fn ($q) => $q->whereNull('excluded_reviewer_id')->orWhere('excluded_reviewer_id', '!=', $user->id))
+                ->when($sparing, fn ($q) => $q->where('graphic', false))
                 ->orderByDesc('priority')
                 ->orderBy('created_at')
                 ->orderBy('id')
@@ -196,8 +222,8 @@ class ModerationService
             throw new LogicException('Claim the task before deciding it.');
         }
 
-        if ($decision === Decision::Escalate && $task->kind === TaskKind::Escalation) {
-            throw new LogicException('An escalation cannot be escalated again.');
+        if ($decision === Decision::Escalate && ! $task->kind->canEscalate()) {
+            throw new LogicException("A {$task->kind->label()} task cannot be escalated.");
         }
 
         DB::transaction(function () use ($task, $user, $decision, $reason, $note, $blockImage) {
@@ -239,6 +265,12 @@ class ModerationService
 
             $outcome = $decision->outcome();
 
+            if ($task->kind === TaskKind::SecondReview) {
+                $this->settleSecondReview($task, $submission, $outcome);
+
+                return;
+            }
+
             match ($task->kind) {
                 TaskKind::Triage, TaskKind::Escalation => $this->finalize($submission, $outcome, DecisionSource::Moderator, $reason, $user),
                 TaskKind::Appeal => $this->finalize($submission, $outcome, DecisionSource::Appeal, $reason, $user),
@@ -248,6 +280,19 @@ class ModerationService
                     : null,
             };
 
+            $rate = (float) config('moderation.second_review_rate');
+
+            if ($task->kind === TaskKind::Triage && $rate > 0 && Lottery::odds($rate)->choose()) {
+                $this->openTask(
+                    $submission,
+                    TaskKind::SecondReview,
+                    $task->priority,
+                    $task->automated_outcome,
+                    excludedReviewerId: $user->id,
+                    reviewsTaskId: $task->id,
+                );
+            }
+
             if ($outcome === Outcome::Reject && $blockImage) {
                 $this->blockImage($submission, $user, Category::tryFrom((string) $reason));
             }
@@ -256,6 +301,34 @@ class ModerationService
                 $this->unblockImage($submission);
             }
         });
+    }
+
+    /**
+     * A second review only measures agreement and never changes the decision itself.
+     * When the two reviewers disagree, an admin settles it.
+     */
+    private function settleSecondReview(ReviewTask $task, Submission $submission, Outcome $outcome): void
+    {
+        $first = $task->reviewedTask;
+        $firstOutcome = $first?->decision?->outcome();
+
+        if ($firstOutcome === null || $firstOutcome === $outcome) {
+            return;
+        }
+
+        $this->openTask(
+            $submission,
+            TaskKind::Escalation,
+            $task->priority - $task->kind->priorityBoost(),
+            $task->automated_outcome,
+            note: sprintf(
+                'Two reviewers disagreed: %s chose to %s, %s chose to %s.',
+                $first->resolver->name ?? 'the first reviewer',
+                $firstOutcome->value,
+                $task->resolver->name ?? 'the second reviewer',
+                $outcome->value,
+            ),
+        );
     }
 
     /**

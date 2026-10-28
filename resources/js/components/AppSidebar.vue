@@ -8,6 +8,7 @@ import {
     ListChecks,
     SlidersHorizontal,
     Upload,
+    Users,
 } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
@@ -27,6 +28,7 @@ import { dashboard } from '@/routes';
 import { index as evaluations } from '@/routes/evaluations';
 import { edit as policy } from '@/routes/policy';
 import { index as review } from '@/routes/review';
+import { index as reviewers } from '@/routes/reviewers';
 import { create as submit, index as submissions } from '@/routes/submissions';
 import type { NavItem } from '@/types';
 
@@ -58,6 +60,7 @@ const mainNavItems = computed<NavItem[]>(() => {
             : []),
         ...(page.props.auth.can.managePolicy
             ? [
+                  { title: 'Reviewers', href: reviewers(), icon: Users },
                   {
                       title: 'Model evaluation',
                       href: evaluations(),

@@ -3,13 +3,14 @@ import { Head, router, setLayoutProps, useForm } from '@inertiajs/vue3';
 import {
     ArrowUpRight,
     Check,
+    Eye,
     FileText,
     Lock,
     MapPinOff,
     ShieldAlert,
     X,
 } from '@lucide/vue';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import InputError from '@/components/InputError.vue';
 import PipelineTimeline from '@/components/moderation/PipelineTimeline.vue';
 import ScoreBars from '@/components/moderation/ScoreBars.vue';
@@ -64,7 +65,20 @@ const why = computed(
             escalation: 'A moderator handed this up for an admin decision.',
             appeal: 'The uploader disputes the rejection. You did not make the original decision.',
             audit: `A random QA sample: the pipeline ${props.task.automated_outcome === 'approve' ? 'approved' : 'rejected'} this automatically. Decide independently; disagreeing overturns it.`,
+            second_review:
+                'A random sample of reviewed items, checked again to measure agreement. Decide as if you were first: the earlier decision is hidden, and if you disagree an admin settles it.',
         })[props.task.kind],
+);
+
+const blind = computed(
+    () => props.task.kind === 'second_review' && props.task.open,
+);
+
+// Graphic images stay blurred until the reviewer chooses to look.
+const revealed = ref(!props.task.graphic);
+watch(
+    () => props.task.id,
+    () => (revealed.value = !props.task.graphic),
 );
 
 // --- Claim countdown -----------------------------------------------------
@@ -97,8 +111,8 @@ const form = useForm({
     decision: '' as '' | 'approve' | 'reject' | 'escalate',
     reason: '',
     note: '',
-    // Audits measure the automation, so blocking re-uploads is opt-in there.
-    block_image: props.task.kind !== 'audit',
+    // Audits and second reviews measure decisions, so blocking re-uploads is opt-in there.
+    block_image: !['audit', 'second_review'].includes(props.task.kind),
     next: true,
 });
 
@@ -112,7 +126,9 @@ const choose = (decision: 'approve' | 'reject' | 'escalate') => {
 
 const submit = () => form.submit(decide(props.task.id));
 
-const canEscalate = computed(() => props.task.kind !== 'escalation');
+const canEscalate = computed(
+    () => !['escalation', 'second_review'].includes(props.task.kind),
+);
 </script>
 
 <template>
@@ -123,13 +139,27 @@ const canEscalate = computed(() => props.task.kind !== 'escalation');
     >
         <div class="min-w-0 space-y-6">
             <Card class="overflow-hidden py-0">
-                <div class="flex min-h-48 items-center justify-center bg-muted">
+                <div
+                    class="relative flex min-h-48 items-center justify-center overflow-hidden bg-muted"
+                >
                     <img
                         v-if="submission.image_url"
                         :src="submission.image_url"
                         :alt="submission.caption ?? 'Submitted image'"
-                        class="max-h-[34rem] object-contain"
+                        class="max-h-[34rem] object-contain transition"
+                        :class="{ 'scale-105 blur-2xl': !revealed }"
                     />
+                    <div
+                        v-if="submission.image_url && !revealed"
+                        class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/40 p-4 text-center"
+                    >
+                        <p class="max-w-xs text-sm font-medium">
+                            This image may be graphic.
+                        </p>
+                        <Button variant="secondary" @click="revealed = true">
+                            <Eye /> Show image
+                        </Button>
+                    </div>
                     <FileText
                         v-else
                         class="size-10 text-muted-foreground"
@@ -194,7 +224,10 @@ const canEscalate = computed(() => props.task.kind !== 'escalation');
                 <CardHeader>
                     <div class="flex flex-wrap items-center gap-2">
                         <TaskKindBadge :kind="task.kind" />
-                        <StatusBadge :status="submission.status" />
+                        <StatusBadge
+                            v-if="!blind"
+                            :status="submission.status"
+                        />
                         <span
                             class="ml-auto rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium tabular-nums"
                             >Priority {{ task.priority }}</span
@@ -232,7 +265,9 @@ const canEscalate = computed(() => props.task.kind !== 'escalation');
                     </div>
                     <p
                         v-if="
-                            submission.decision_source && task.kind !== 'triage'
+                            submission.decision_source &&
+                            task.kind !== 'triage' &&
+                            !blind
                         "
                         class="text-xs text-muted-foreground"
                     >
@@ -364,7 +399,10 @@ const canEscalate = computed(() => props.task.kind !== 'escalation');
                             </div>
                             <InputError :message="form.errors.reason" />
                             <Label
-                                v-if="submission.image_url"
+                                v-if="
+                                    submission.image_url &&
+                                    task.kind !== 'second_review'
+                                "
                                 class="flex items-center gap-2 pt-1 font-normal"
                             >
                                 <Checkbox v-model="form.block_image" />

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { FileText, Lock, Play } from '@lucide/vue';
+import { EyeOff, FileText, Lock, Play } from '@lucide/vue';
 import Heading from '@/components/Heading.vue';
 import Pagination from '@/components/moderation/Pagination.vue';
 import TaskKindBadge from '@/components/moderation/TaskKindBadge.vue';
@@ -25,6 +25,7 @@ const props = defineProps<{
     tasks: Paginated<QueueRow>;
     kinds: { value: TaskKind; label: string; open: number }[];
     filters: { kind: TaskKind | null };
+    exposure: { graphic_today: number; limit: number };
 }>();
 
 defineOptions({
@@ -65,6 +66,23 @@ const startReviewing = () => {
                 Review next
             </Button>
         </div>
+
+        <p
+            v-if="exposure.graphic_today >= exposure.limit"
+            class="flex gap-2 rounded-lg bg-amber-100 p-3 text-sm text-amber-950 dark:bg-amber-500/15 dark:text-amber-200"
+        >
+            <EyeOff class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            You have decided {{ exposure.graphic_today }} graphic items in the
+            last 24 hours. “Review next” now gives you non-graphic work only.
+            Take a break if you can.
+        </p>
+        <p
+            v-else-if="exposure.graphic_today > 0"
+            class="text-xs text-muted-foreground"
+        >
+            {{ exposure.graphic_today }} of {{ exposure.limit }} graphic items
+            today. After that, “Review next” gives you non-graphic work only.
+        </p>
 
         <div class="flex flex-wrap gap-2" role="tablist">
             <Button
@@ -114,6 +132,7 @@ const startReviewing = () => {
                             :src="task.submission.thumbnail_url"
                             alt=""
                             class="size-full object-cover"
+                            :class="{ 'scale-110 blur-md': task.graphic }"
                             loading="lazy"
                         />
                         <FileText
@@ -125,6 +144,12 @@ const startReviewing = () => {
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-2">
                             <TaskKindBadge :kind="task.kind" />
+                            <span
+                                v-if="task.graphic"
+                                class="inline-flex items-center gap-1 text-xs text-muted-foreground"
+                                ><EyeOff class="size-3.5" aria-hidden="true" />
+                                Graphic</span
+                            >
                             <span
                                 v-if="task.submission.top_category"
                                 class="text-xs text-muted-foreground"

@@ -19,6 +19,9 @@ enum TaskKind: string
     /** A random sample of automated decisions, checked to measure their precision. */
     case Audit = 'audit';
 
+    /** A random sample of triage decisions, re-decided blind by a different reviewer to measure agreement. */
+    case SecondReview = 'second_review';
+
     public function label(): string
     {
         return match ($this) {
@@ -26,7 +29,16 @@ enum TaskKind: string
             self::Escalation => 'Escalation',
             self::Appeal => 'Appeal',
             self::Audit => 'QA audit',
+            self::SecondReview => 'Second review',
         };
+    }
+
+    /**
+     * Escalations are already with an admin; a second review only measures agreement.
+     */
+    public function canEscalate(): bool
+    {
+        return $this !== self::Escalation && $this !== self::SecondReview;
     }
 
     /**
@@ -38,7 +50,7 @@ enum TaskKind: string
             self::Escalation => 30,
             self::Appeal => 20,
             self::Triage => 0,
-            self::Audit => -20,
+            self::Audit, self::SecondReview => -20,
         };
     }
 }

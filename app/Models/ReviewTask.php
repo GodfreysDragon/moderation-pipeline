@@ -20,8 +20,10 @@ use Illuminate\Support\Carbon;
  * @property int $submission_id
  * @property TaskKind $kind
  * @property int $priority
+ * @property bool $graphic
  * @property Outcome|null $automated_outcome
  * @property int|null $excluded_reviewer_id
+ * @property int|null $reviews_task_id
  * @property string|null $note
  * @property int|null $claimed_by
  * @property Carbon|null $claimed_at
@@ -38,7 +40,7 @@ use Illuminate\Support\Carbon;
  * @property-read User|null $resolver
  */
 #[Fillable([
-    'submission_id', 'kind', 'priority', 'automated_outcome', 'excluded_reviewer_id', 'note', 'claimed_by',
+    'submission_id', 'kind', 'priority', 'graphic', 'automated_outcome', 'excluded_reviewer_id', 'reviews_task_id', 'note', 'claimed_by',
     'claimed_at', 'claim_expires_at', 'decision', 'reason', 'decision_note', 'resolved_by', 'resolved_at',
 ])]
 class ReviewTask extends Model
@@ -53,6 +55,7 @@ class ReviewTask extends Model
     {
         return [
             'kind' => TaskKind::class,
+            'graphic' => 'boolean',
             'automated_outcome' => Outcome::class,
             'decision' => Decision::class,
             'claimed_at' => 'datetime',
@@ -67,6 +70,16 @@ class ReviewTask extends Model
     public function submission(): BelongsTo
     {
         return $this->belongsTo(Submission::class);
+    }
+
+    /**
+     * For a second review, the task it re-checks.
+     *
+     * @return BelongsTo<ReviewTask, $this>
+     */
+    public function reviewedTask(): BelongsTo
+    {
+        return $this->belongsTo(ReviewTask::class, 'reviews_task_id');
     }
 
     /**

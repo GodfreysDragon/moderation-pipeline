@@ -4,6 +4,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\PolicyController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\ReviewerController;
 use App\Http\Controllers\SubmissionController;
 use Illuminate\Support\Facades\Route;
 
@@ -34,6 +35,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('policy', [PolicyController::class, 'edit'])->name('policy.edit');
     Route::post('policy/preview', [PolicyController::class, 'preview'])->name('policy.preview');
     Route::post('policy', [PolicyController::class, 'store'])->name('policy.store');
+
+    // Reviewer quality (admins)
+    Route::get('reviewers', ReviewerController::class)->name('reviewers.index');
 
     // Model evaluation (admins)
     Route::get('evaluations', [EvaluationController::class, 'index'])->name('evaluations.index');

@@ -61,6 +61,10 @@ class ReviewController extends Controller
                 'open' => (int) ($counts[$k->value] ?? 0),
             ], $kinds),
             'filters' => ['kind' => $kind?->value],
+            'exposure' => [
+                'graphic_today' => $this->moderation->graphicExposure($user),
+                'limit' => config('moderation.graphic_daily_limit'),
+            ],
         ]);
     }
 
@@ -93,6 +97,22 @@ class ReviewController extends Controller
 
         $task->load(['submission.steps', 'submission.tasks.claimant', 'submission.tasks.resolver', 'submission.user', 'submission.decider', 'submission.policyVersion', 'claimant']);
 
+        $submission = SubmissionPresenter::detail($task->submission, $user);
+
+        // A second review is blind: while it is open, the earlier decision stays out of the page.
+        if ($task->kind === TaskKind::SecondReview && $task->isOpen()) {
+            $submission = [
+                ...$submission,
+                'status' => 'pending_review',
+                'decision_source' => null,
+                'decision_reason' => null,
+                'decided_by' => null,
+                'decided_at' => null,
+                'appeal_deadline' => null,
+                'tasks' => [],
+            ];
+        }
+
         return Inertia::render('review/Show', [
             'task' => [
                 ...SubmissionPresenter::task($task),
@@ -102,7 +122,7 @@ class ReviewController extends Controller
                 'may_work' => $this->moderation->mayWork($user, $task),
                 'excluded' => $task->excluded_reviewer_id === $user->id,
             ],
-            'submission' => SubmissionPresenter::detail($task->submission, $user),
+            'submission' => $submission,
             'reasons' => [
                 ...array_map(fn (Category $c) => ['value' => $c->value, 'label' => $c->label()], Category::cases()),
                 ['value' => 'other', 'label' => 'Other policy violation'],
@@ -162,8 +182,10 @@ class ReviewController extends Controller
             return to_route('review.show', $task);
         }
 
-        if ($decision === Decision::Escalate && $task->kind === TaskKind::Escalation) {
-            return back()->withErrors(['decision' => 'An escalation is already with an admin.']);
+        if ($decision === Decision::Escalate && ! $task->kind->canEscalate()) {
+            return back()->withErrors(['decision' => $task->kind === TaskKind::Escalation
+                ? 'An escalation is already with an admin.'
+                : 'A second review is approve or reject only; disagreements go to an admin automatically.']);
         }
 
         try {
@@ -173,8 +195,8 @@ class ReviewController extends Controller
                 $decision,
                 $validated['reason'] ?? null,
                 $validated['note'] ?? null,
-                // An audit grades the automation; adding to the blocklist is a separate, deliberate choice.
-                $validated['block_image'] ?? $task->kind !== TaskKind::Audit,
+                // Audits and second reviews measure decisions; blocking re-uploads is a separate, deliberate choice.
+                $validated['block_image'] ?? ! in_array($task->kind, [TaskKind::Audit, TaskKind::SecondReview], true),
             );
         } catch (ClaimLostException) {
             Inertia::flash('toast', ['type' => 'error', 'message' => 'Your claim on this task expired or was taken. Claim it again to decide.']);

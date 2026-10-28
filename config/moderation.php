@@ -72,6 +72,25 @@ return [
 
     'claim_minutes' => 10,
 
+    // Share of triage decisions a second, blind reviewer checks to measure agreement (0-1).
+    'second_review_rate' => (float) env('MODERATION_SECOND_REVIEW_RATE', 0.1),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reviewer wellbeing
+    |--------------------------------------------------------------------------
+    |
+    | An image counts as graphic when a sexual, violence or self-harm score reaches
+    | graphic_score, or when no model scored it. The review page blurs graphic
+    | images until the reviewer reveals them, and after graphic_daily_limit graphic
+    | decisions in 24 hours "Review next" stops handing that reviewer more.
+    |
+    */
+
+    'graphic_score' => 0.3,
+
+    'graphic_daily_limit' => (int) env('MODERATION_GRAPHIC_DAILY_LIMIT', 40),
+
     'appeal_window_days' => 14,
 
 ];

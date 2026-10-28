@@ -13,7 +13,12 @@ export type DecisionSource =
 
 export type Outcome = 'approve' | 'review' | 'reject';
 
-export type TaskKind = 'triage' | 'escalation' | 'appeal' | 'audit';
+export type TaskKind =
+    | 'triage'
+    | 'escalation'
+    | 'appeal'
+    | 'audit'
+    | 'second_review';
 
 export type StepStatus = 'running' | 'succeeded' | 'skipped' | 'failed';
 
@@ -67,6 +72,7 @@ export type ReviewTask = {
     kind: TaskKind;
     kind_label: string;
     priority: number;
+    graphic: boolean;
     automated_outcome: Outcome | null;
     note: string | null;
     claimed_by: string | null;
