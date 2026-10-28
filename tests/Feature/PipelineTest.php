@@ -120,6 +120,14 @@ test('a text-only doxxing threat is rejected automatically', function () {
         ->and(stageStatuses($submission))->toMatchArray(['prepare' => 'skipped', 'match_known' => 'skipped']);
 });
 
+test('a text-only insult without a threat goes to review', function () {
+    $submission = submit(['caption' => '@jordan every single post of yours is garbage. Total loser.']);
+
+    expect($submission->status)->toBe(SubmissionStatus::PendingReview)
+        ->and($submission->decision_reason)->toBe('harassment')
+        ->and($submission->tasks()->sole()->kind)->toBe(TaskKind::Triage);
+});
+
 test('an uncertain item goes to the review queue with a priority', function () {
     $submission = submit(['caption' => 'is this ok? [violence:0.6]']);
     $task = $submission->tasks()->sole();

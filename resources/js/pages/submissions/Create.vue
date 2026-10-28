@@ -93,9 +93,9 @@ const samples = [
     },
     {
         label: 'Personal attack',
-        hint: 'Text only, rejected as doxxing',
+        hint: 'Text only, human review',
         file: null,
-        caption: "@jordan you're such a loser. I found your home address too.",
+        caption: '@jordan every single post of yours is garbage. Total loser.',
     },
     {
         label: 'Distress',
