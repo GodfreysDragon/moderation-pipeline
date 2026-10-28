@@ -46,6 +46,8 @@ const outcomeLabel: Record<string, string> = {
 
 const sides = ['current', 'candidate'] as const;
 
+const automated = (s: EvaluationSide) => s.outcomes.approve + s.outcomes.reject;
+
 type Row = {
     label: string;
     value: (side: EvaluationSide) => string;
@@ -66,8 +68,12 @@ const rows: Row[] = [
     },
     {
         label: 'Automated decisions a person agreed with',
-        value: (s) => percent(s.accuracy, 1),
-        score: (s) => s.accuracy,
+        value: (s) =>
+            s.accuracy === null
+                ? '–'
+                : `${percent(s.accuracy, 1)} (${s.correct} of ${automated(s)})`,
+        // Too few automated decisions to call a winner.
+        score: (s) => (automated(s) >= 10 ? s.accuracy : null),
         better: 'higher',
     },
     {
@@ -162,8 +168,11 @@ const drift = computed(() =>
                 <CardHeader>
                     <CardTitle>Against what people decided</CardTitle>
                     <CardDescription>
-                        Both sets of scores under the same thresholds. The
-                        better figure in each row is marked.
+                        Both sets of scores under the same thresholds. These are
+                        items people decided, which the current scores mostly
+                        sent to review by design, so look at how many the
+                        candidate decides on its own and how often people agree
+                        with those. The better figure in each row is marked.
                     </CardDescription>
                 </CardHeader>
                 <CardContent class="overflow-x-auto">
