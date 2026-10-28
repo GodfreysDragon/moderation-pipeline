@@ -11,6 +11,7 @@ use Anthropic\Client;
 use App\Ai\Contracts\ContentClassifier;
 use App\Ai\Data\Classification;
 use App\Ai\Data\ClassificationInput;
+use App\Ai\Data\TokenUsage;
 use App\Ai\Exceptions\ClassifierRefusedException;
 use App\Enums\Category;
 use JsonException;
@@ -48,7 +49,9 @@ class ClaudeContentClassifier implements ContentClassifier
         $message = $this->client->beta->messages->create(
             model: $this->model,
             maxTokens: 4096,
-            system: $this->system(),
+            // The instructions and the output schema are identical on every call, so cache
+            // them: repeat reads bill at a twentieth of the input price.
+            system: [['type' => 'text', 'text' => $this->system(), 'cacheControl' => ['type' => 'ephemeral']]],
             messages: [['role' => 'user', 'content' => $content]],
             outputConfig: [
                 // Classification: low effort holds quality and keeps per-item cost down.
@@ -69,6 +72,12 @@ class ClaudeContentClassifier implements ContentClassifier
                     return Classification::fromArray(
                         json_decode($block->text, true, flags: JSON_THROW_ON_ERROR),
                         $message->model ?? $this->model,
+                        new TokenUsage(
+                            input: $message->usage->inputTokens,
+                            output: $message->usage->outputTokens,
+                            cacheRead: $message->usage->cacheReadInputTokens ?? 0,
+                            cacheWrite: $message->usage->cacheCreationInputTokens ?? 0,
+                        ),
                     );
                 } catch (JsonException $e) {
                     throw new UnexpectedValueException('Classification response was not valid JSON.', previous: $e);

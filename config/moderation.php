@@ -19,6 +19,14 @@ return [
         'model' => env('ANTHROPIC_MODEL', 'claude-opus-5-5'),
     ],
 
+    // List prices in dollars per million tokens, for the cost estimates on the dashboard.
+    'pricing' => [
+        'claude-opus-5-5' => ['input' => 4.00, 'cache_read' => 0.20, 'output' => 20.00],
+        'claude-opus-5' => ['input' => 5.00, 'cache_read' => 0.50, 'output' => 25.00],
+        'claude-sonnet-5-5' => ['input' => 2.00, 'cache_read' => 0.20, 'output' => 10.00],
+        'claude-haiku-5-5' => ['input' => 0.10, 'cache_read' => 0.01, 'output' => 0.50],
+    ],
+
     // Classification calls allowed per minute across all queue workers.
     'ai_calls_per_minute' => (int) env('MODERATION_AI_CALLS_PER_MINUTE', 30),
 

@@ -84,9 +84,18 @@ MODERATION_AUDIT_SAMPLE_RATE=0.05     # default for the first policy version
 The fake classifier reads the caption and filename only. It also accepts pinned scores such as `[violence:0.6]`,
 and `[refuse]` simulates a model refusal, which is handy for demos and tests.
 
-Measured against the live API (`claude-opus-5-5`, effort `low`), one classification uses about 2,800 input tokens
-with an image (about 2,100 text-only, mostly the fixed system prompt and schema) and 200 to 300 output tokens, and
-takes 3 to 5 seconds.
+Measured against the live API (`claude-opus-5-5`, effort `low`), one classification takes 3 to 5 seconds and uses
+200 to 300 output tokens. Its input is a fixed 2,093-token prefix (the instructions and the output schema), about
+50 tokens of caption and about 640 more for an image. The prefix is marked for prompt caching, so after the first
+call it is read from the cache at a twentieth of the input price:
+
+| Per item      | Before caching | With a warm cache |
+| ------------- | -------------- | ----------------- |
+| Text only     | about $0.014   | about $0.006      |
+| With an image | about $0.016   | about $0.007      |
+
+Every classification records its token counts, and the dashboard shows the estimated spend, the share of input
+served from the cache and what caching saved.
 
 ## Screenshots
 

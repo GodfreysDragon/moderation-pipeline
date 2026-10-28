@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Ai\Data\TokenUsage;
 use App\Enums\Category;
 use App\Enums\DecisionSource;
 use App\Enums\Outcome;
@@ -33,6 +34,10 @@ use Illuminate\Support\Carbon;
  * @property string|null $ai_summary
  * @property string|null $ai_model
  * @property string|null $ai_error
+ * @property int|null $ai_input_tokens
+ * @property int|null $ai_cache_read_tokens
+ * @property int|null $ai_cache_write_tokens
+ * @property int|null $ai_output_tokens
  * @property SubmissionStatus $status
  * @property Outcome|null $policy_outcome
  * @property int|null $policy_version_id
@@ -50,7 +55,8 @@ use Illuminate\Support\Carbon;
  */
 #[Fillable([
     'user_id', 'caption', 'upload_path', 'original_filename', 'image_path', 'thumbnail_path', 'mime', 'width',
-    'height', 'bytes', 'had_gps', 'sha256', 'dhash', 'ai_scores', 'ai_summary', 'ai_model', 'ai_error', 'status',
+    'height', 'bytes', 'had_gps', 'sha256', 'dhash', 'ai_scores', 'ai_summary', 'ai_model', 'ai_error',
+    'ai_input_tokens', 'ai_cache_read_tokens', 'ai_cache_write_tokens', 'ai_output_tokens', 'status',
     'policy_outcome', 'policy_version_id', 'decision_source', 'decision_reason', 'decided_by', 'decided_at',
     'appeal_message', 'appealed_at',
 ])]
@@ -123,6 +129,16 @@ class Submission extends Model
     public function hasImage(): bool
     {
         return $this->image_path !== null;
+    }
+
+    public function tokenUsage(): ?TokenUsage
+    {
+        return $this->ai_input_tokens === null ? null : new TokenUsage(
+            input: $this->ai_input_tokens,
+            output: (int) $this->ai_output_tokens,
+            cacheRead: (int) $this->ai_cache_read_tokens,
+            cacheWrite: (int) $this->ai_cache_write_tokens,
+        );
     }
 
     /**

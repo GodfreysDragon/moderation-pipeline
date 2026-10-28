@@ -2,6 +2,8 @@
 
 namespace App\Moderation;
 
+use App\Ai\Data\TokenUsage;
+use App\Ai\Pricing;
 use App\Enums\Category;
 use App\Enums\Decision;
 use App\Enums\DecisionSource;
@@ -62,6 +64,53 @@ class ModerationMetrics
             'daily' => $this->daily($submissions, $since, $days),
             'categories' => $this->categories($decided),
             'stages' => $this->stages($since),
+            'ai_cost' => $this->aiCost($since),
+        ];
+    }
+
+    /**
+     * Token spend on classification, and what prompt caching saved against
+     * billing every input token at the full price.
+     *
+     * @return array{classified: int, input_tokens: int, output_tokens: int, cache_hit_rate: float|null, cost: float|null, cost_per_item: float|null, saved_by_cache: float|null}
+     */
+    private function aiCost(CarbonImmutable $since): array
+    {
+        $classified = Submission::query()
+            ->where('created_at', '>=', $since)
+            ->whereNotNull('ai_input_tokens')
+            ->get(['id', 'ai_model', 'ai_input_tokens', 'ai_cache_read_tokens', 'ai_cache_write_tokens', 'ai_output_tokens']);
+
+        $input = $output = $cacheRead = 0;
+        $cost = $uncached = null;
+
+        foreach ($classified as $submission) {
+            $usage = $submission->tokenUsage();
+
+            if ($usage === null) {
+                continue;
+            }
+
+            $input += $usage->totalInput();
+            $output += $usage->output;
+            $cacheRead += $usage->cacheRead;
+
+            $paid = Pricing::cost($submission->ai_model, $usage);
+
+            if ($paid !== null) {
+                $cost = ($cost ?? 0) + $paid;
+                $uncached = ($uncached ?? 0) + Pricing::cost($submission->ai_model, new TokenUsage($usage->totalInput(), $usage->output));
+            }
+        }
+
+        return [
+            'classified' => $classified->count(),
+            'input_tokens' => $input,
+            'output_tokens' => $output,
+            'cache_hit_rate' => $this->ratio($cacheRead, $input),
+            'cost' => $cost === null ? null : round($cost, 4),
+            'cost_per_item' => $cost === null ? null : round($cost / $classified->count(), 5),
+            'saved_by_cache' => $cost === null ? null : round($uncached - $cost, 4),
         ];
     }
 

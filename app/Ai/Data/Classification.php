@@ -17,6 +17,7 @@ final readonly class Classification
         public array $categories,
         public string $summary,
         public string $model,
+        public ?TokenUsage $usage = null,
     ) {}
 
     /**
@@ -68,7 +69,7 @@ final readonly class Classification
     /**
      * @param  array<string, mixed>  $data
      */
-    public static function fromArray(array $data, string $model): self
+    public static function fromArray(array $data, string $model, ?TokenUsage $usage = null): self
     {
         if (! isset($data['categories']) || ! is_array($data['categories'])) {
             throw new UnexpectedValueException('Classification is missing its categories.');
@@ -90,7 +91,7 @@ final readonly class Classification
             ];
         }
 
-        return new self($categories, mb_substr((string) ($data['summary'] ?? ''), 0, 500), $model);
+        return new self($categories, mb_substr((string) ($data['summary'] ?? ''), 0, 500), $model, $usage);
     }
 
     /**

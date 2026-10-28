@@ -108,6 +108,10 @@ class ClassifyContent implements ShouldQueue
             'ai_summary' => $classification->summary,
             'ai_model' => $classification->model,
             'ai_error' => null,
+            'ai_input_tokens' => $classification->usage?->input,
+            'ai_cache_read_tokens' => $classification->usage?->cacheRead,
+            'ai_cache_write_tokens' => $classification->usage?->cacheWrite,
+            'ai_output_tokens' => $classification->usage?->output,
         ]);
 
         $top = collect($classification->scores())->sortDesc();
@@ -116,6 +120,9 @@ class ClassifyContent implements ShouldQueue
             'model' => $classification->model,
             'top_category' => $top->keys()->first(),
             'top_score' => $top->first(),
+            'input_tokens' => $classification->usage?->totalInput(),
+            'cached_tokens' => $classification->usage?->cacheRead,
+            'output_tokens' => $classification->usage?->output,
         ]);
     }
 

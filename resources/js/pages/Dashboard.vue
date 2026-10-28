@@ -67,7 +67,23 @@ type Metrics = {
         p50_ms: number | null;
         p95_ms: number | null;
     }[];
+    ai_cost: {
+        classified: number;
+        input_tokens: number;
+        output_tokens: number;
+        cache_hit_rate: number | null;
+        cost: number | null;
+        cost_per_item: number | null;
+        saved_by_cache: number | null;
+    };
 };
+
+const dollars = (value: number | null, digits = 2) =>
+    value === null ? 'â€“' : `$${value.toFixed(digits)}`;
+const thousands = (value: number) =>
+    value >= 10_000
+        ? `${Math.round(value / 1000)}k`
+        : value.toLocaleString('en-US');
 
 const props = defineProps<{ metrics: Metrics }>();
 
@@ -421,48 +437,133 @@ const t = computed(() => props.metrics.totals);
                 </CardContent>
             </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Time to decision</CardTitle>
-                    <CardDescription>Medians for this range.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <dl
-                        class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3"
-                    >
-                        <div class="rounded-lg border p-3">
-                            <dt class="text-xs text-muted-foreground">
-                                Automated
-                            </dt>
-                            <dd class="text-xl font-semibold">
-                                {{
-                                    minutes(
-                                        metrics.timing.automated_minutes_p50,
-                                    )
-                                }}
-                            </dd>
-                        </div>
-                        <div class="rounded-lg border p-3">
-                            <dt class="text-xs text-muted-foreground">
-                                With a person
-                            </dt>
-                            <dd class="text-xl font-semibold">
-                                {{ minutes(metrics.timing.human_minutes_p50) }}
-                            </dd>
-                        </div>
-                        <div class="rounded-lg border p-3">
-                            <dt class="text-xs text-muted-foreground">
-                                Handling per task
-                            </dt>
-                            <dd class="text-xl font-semibold">
-                                {{
-                                    seconds(metrics.timing.handling_seconds_p50)
-                                }}
-                            </dd>
-                        </div>
-                    </dl>
-                </CardContent>
-            </Card>
+            <div class="min-w-0 space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Time to decision</CardTitle>
+                        <CardDescription
+                            >Medians for this range.</CardDescription
+                        >
+                    </CardHeader>
+                    <CardContent>
+                        <dl
+                            class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3"
+                        >
+                            <div class="rounded-lg border p-3">
+                                <dt class="text-xs text-muted-foreground">
+                                    Automated
+                                </dt>
+                                <dd class="text-xl font-semibold">
+                                    {{
+                                        minutes(
+                                            metrics.timing
+                                                .automated_minutes_p50,
+                                        )
+                                    }}
+                                </dd>
+                            </div>
+                            <div class="rounded-lg border p-3">
+                                <dt class="text-xs text-muted-foreground">
+                                    With a person
+                                </dt>
+                                <dd class="text-xl font-semibold">
+                                    {{
+                                        minutes(
+                                            metrics.timing.human_minutes_p50,
+                                        )
+                                    }}
+                                </dd>
+                            </div>
+                            <div class="rounded-lg border p-3">
+                                <dt class="text-xs text-muted-foreground">
+                                    Handling per task
+                                </dt>
+                                <dd class="text-xl font-semibold">
+                                    {{
+                                        seconds(
+                                            metrics.timing.handling_seconds_p50,
+                                        )
+                                    }}
+                                </dd>
+                            </div>
+                        </dl>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>AI spend</CardTitle>
+                        <CardDescription>
+                            Estimated from token counts at list prices,
+                            {{ metrics.ai_cost.classified }} classified items.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p
+                            v-if="metrics.ai_cost.classified === 0"
+                            class="text-sm text-muted-foreground"
+                        >
+                            No token counts in this range. The offline
+                            classifier doesnâ€™t report any.
+                        </p>
+                        <dl
+                            v-else
+                            class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-4"
+                        >
+                            <div class="rounded-lg border p-3">
+                                <dt class="text-xs text-muted-foreground">
+                                    Total
+                                </dt>
+                                <dd class="text-xl font-semibold tabular-nums">
+                                    {{ dollars(metrics.ai_cost.cost) }}
+                                </dd>
+                            </div>
+                            <div class="rounded-lg border p-3">
+                                <dt class="text-xs text-muted-foreground">
+                                    Per item
+                                </dt>
+                                <dd class="text-xl font-semibold tabular-nums">
+                                    {{
+                                        dollars(
+                                            metrics.ai_cost.cost_per_item,
+                                            4,
+                                        )
+                                    }}
+                                </dd>
+                            </div>
+                            <div class="rounded-lg border p-3">
+                                <dt class="text-xs text-muted-foreground">
+                                    Input from cache
+                                </dt>
+                                <dd class="text-xl font-semibold tabular-nums">
+                                    {{
+                                        percent(metrics.ai_cost.cache_hit_rate)
+                                    }}
+                                </dd>
+                            </div>
+                            <div class="rounded-lg border p-3">
+                                <dt class="text-xs text-muted-foreground">
+                                    Saved by caching
+                                </dt>
+                                <dd class="text-xl font-semibold tabular-nums">
+                                    {{
+                                        dollars(metrics.ai_cost.saved_by_cache)
+                                    }}
+                                </dd>
+                            </div>
+                        </dl>
+                        <p
+                            v-if="metrics.ai_cost.classified > 0"
+                            class="mt-3 text-xs text-muted-foreground"
+                        >
+                            {{ thousands(metrics.ai_cost.input_tokens) }} input
+                            and
+                            {{ thousands(metrics.ai_cost.output_tokens) }}
+                            output tokens.
+                        </p>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     </div>
 </template>

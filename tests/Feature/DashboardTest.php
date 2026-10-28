@@ -53,6 +53,29 @@ class DashboardTest extends TestCase
                 ->where('metrics.categories.0.category', 'spam')
                 ->where('metrics.categories.0.auto', 2)
                 ->has('metrics.stages', 4)
+                ->where('metrics.ai_cost.classified', 0)
+            );
+    }
+
+    public function test_ai_spend_counts_cache_reads_at_their_discounted_price()
+    {
+        // 1M fresh input ($4) + 1M cache reads ($0.20) + 0.1M output ($2) on claude-opus-5-5.
+        Submission::factory()->scored()->decided(Outcome::Approve)->create([
+            'ai_model' => 'claude-opus-5-5',
+            'ai_input_tokens' => 1_000_000,
+            'ai_cache_read_tokens' => 1_000_000,
+            'ai_cache_write_tokens' => 0,
+            'ai_output_tokens' => 100_000,
+        ]);
+
+        $this->actingAs(User::factory()->admin()->create())
+            ->get(route('dashboard'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('metrics.ai_cost.classified', 1)
+                ->where('metrics.ai_cost.cost', 6.2)
+                ->where('metrics.ai_cost.cache_hit_rate', 0.5)
+                // Without the cache, those reads would have cost $4 instead of $0.20.
+                ->where('metrics.ai_cost.saved_by_cache', 3.8)
             );
     }
 }

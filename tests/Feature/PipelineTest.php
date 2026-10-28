@@ -4,6 +4,7 @@ use Anthropic\Core\Exceptions\RetryableException;
 use App\Ai\Contracts\ContentClassifier;
 use App\Ai\Data\Classification;
 use App\Ai\Data\ClassificationInput;
+use App\Ai\Data\TokenUsage;
 use App\Ai\FakeContentClassifier;
 use App\Enums\Decision;
 use App\Enums\DecisionSource;
@@ -127,6 +128,27 @@ test('a text-only insult without a threat goes to review', function () {
     expect($submission->status)->toBe(SubmissionStatus::PendingReview)
         ->and($submission->decision_reason)->toBe('harassment')
         ->and($submission->tasks()->sole()->kind)->toBe(TaskKind::Triage);
+});
+
+test('token usage from the classifier is stored for cost reporting', function () {
+    $this->app->instance(ContentClassifier::class, new class implements ContentClassifier
+    {
+        public function classify(ClassificationInput $input): Classification
+        {
+            $fake = (new FakeContentClassifier)->classify($input);
+
+            return new Classification($fake->categories, $fake->summary, 'claude-opus-5-5', new TokenUsage(150, 280, cacheRead: 1990));
+        }
+    });
+
+    $submission = submit(['caption' => 'Sunset over the harbour']);
+    $step = $submission->steps()->where('stage', PipelineStage::Classify)->sole();
+
+    expect($submission->ai_input_tokens)->toBe(150)
+        ->and($submission->ai_cache_read_tokens)->toBe(1990)
+        ->and($submission->ai_cache_write_tokens)->toBe(0)
+        ->and($submission->ai_output_tokens)->toBe(280)
+        ->and($step->detail)->toMatchArray(['input_tokens' => 2140, 'cached_tokens' => 1990, 'output_tokens' => 280]);
 });
 
 test('an uncertain item goes to the review queue with a priority', function () {

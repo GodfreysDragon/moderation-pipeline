@@ -303,6 +303,7 @@ class DatabaseSeeder extends Seeder
                 'ai_scores' => collect($scores)->map(fn ($s) => ['score' => $s, 'evidence' => $s >= 0.3 ? $this->evidence($profile) : 'none'])->all(),
                 'ai_summary' => $hasImage ? 'A photo with the caption shown.' : 'A text-only post.',
                 'ai_model' => 'claude-opus-5-5',
+                ...$this->tokenUsage($submission->id, $hasImage),
             ]);
         }
 
@@ -531,6 +532,28 @@ class DatabaseSeeder extends Seeder
         }
 
         return $scores;
+    }
+
+    /**
+     * Token counts shaped like live claude-opus-5-5 calls: a 2,093-token cached
+     * prefix (instructions and schema), about 40-60 fresh tokens of caption, about
+     * 640 more for an image, and 190-310 output. Roughly one call in 25 finds the
+     * cache expired and writes it again. Derived from the id so the random stream,
+     * and with it the rest of the demo data, stays the same.
+     *
+     * @return array{ai_input_tokens: int, ai_cache_read_tokens: int, ai_cache_write_tokens: int, ai_output_tokens: int}
+     */
+    private function tokenUsage(int $id, bool $hasImage): array
+    {
+        $prefix = 2093;
+        $written = $id % 25 === 0;
+
+        return [
+            'ai_input_tokens' => 40 + $id * 7 % 21 + ($hasImage ? 636 : 0),
+            'ai_cache_read_tokens' => $written ? 0 : $prefix,
+            'ai_cache_write_tokens' => $written ? $prefix : 0,
+            'ai_output_tokens' => 190 + $id * 37 % 121,
+        ];
     }
 
     private function evidence(string $profile): string
