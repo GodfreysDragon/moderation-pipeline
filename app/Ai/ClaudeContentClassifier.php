@@ -4,7 +4,10 @@ namespace App\Ai;
 
 use Anthropic\Beta\Messages\BetaBase64ImageSource;
 use Anthropic\Beta\Messages\BetaBase64ImageSource\MediaType;
+use Anthropic\Beta\Messages\BetaCacheControlEphemeral;
 use Anthropic\Beta\Messages\BetaImageBlockParam;
+use Anthropic\Beta\Messages\BetaMessage;
+use Anthropic\Beta\Messages\BetaMessageParam;
 use Anthropic\Beta\Messages\BetaTextBlock;
 use Anthropic\Beta\Messages\BetaTextBlockParam;
 use Anthropic\Client;
@@ -33,6 +36,21 @@ class ClaudeContentClassifier implements ContentClassifier
 
     public function classify(ClassificationInput $input): Classification
     {
+        return $this->parse($this->client->beta->messages->create(
+            ...$this->params($input),
+            fallbacks: 'default',
+            betas: [self::FALLBACK_BETA],
+        ));
+    }
+
+    /**
+     * The Messages API parameters for one classification, shared with batch
+     * re-classification so both send exactly the same request.
+     *
+     * @return array{model: string, maxTokens: int, system: list<BetaTextBlockParam>, messages: list<BetaMessageParam>, outputConfig: array<string, mixed>}
+     */
+    public function params(ClassificationInput $input, ?string $model = null, string $effort = 'low'): array
+    {
         $content = [];
 
         if ($input->imageBytes !== null) {
@@ -46,22 +64,23 @@ class ClaudeContentClassifier implements ContentClassifier
 
         $content[] = BetaTextBlockParam::with(text: $this->prompt($input));
 
-        $message = $this->client->beta->messages->create(
-            model: $this->model,
-            maxTokens: 4096,
+        return [
+            'model' => $model ?? $this->model,
+            'maxTokens' => 4096,
             // The instructions and the output schema are identical on every call, so cache
             // them: repeat reads bill at a twentieth of the input price.
-            system: [['type' => 'text', 'text' => $this->system(), 'cacheControl' => ['type' => 'ephemeral']]],
-            messages: [['role' => 'user', 'content' => $content]],
-            outputConfig: [
+            'system' => [BetaTextBlockParam::with(text: $this->system(), cacheControl: BetaCacheControlEphemeral::with())],
+            'messages' => [BetaMessageParam::with(content: $content, role: 'user')],
+            'outputConfig' => [
                 // Classification: low effort holds quality and keeps per-item cost down.
-                'effort' => 'low',
+                'effort' => $effort,
                 'format' => ['type' => 'json_schema', 'schema' => Classification::schema()],
             ],
-            fallbacks: 'default',
-            betas: [self::FALLBACK_BETA],
-        );
+        ];
+    }
 
+    public function parse(BetaMessage $message): Classification
+    {
         if ($message->stopReason === 'refusal') {
             throw ClassifierRefusedException::withCategory($message->stopDetails?->category);
         }

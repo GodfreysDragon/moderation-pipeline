@@ -27,6 +27,9 @@ return [
         'claude-haiku-5-5' => ['input' => 0.10, 'cache_read' => 0.01, 'output' => 0.50],
     ],
 
+    // How often to check a running evaluation batch, in seconds.
+    'evaluation_poll_seconds' => (int) env('MODERATION_EVALUATION_POLL_SECONDS', 60),
+
     // Classification calls allowed per minute across all queue workers.
     'ai_calls_per_minute' => (int) env('MODERATION_AI_CALLS_PER_MINUTE', 30),
 

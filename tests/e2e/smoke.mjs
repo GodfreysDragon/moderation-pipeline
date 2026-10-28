@@ -303,6 +303,7 @@ const PAGES = [
     ['submit', '/submissions/create', 'Try a sample'],
     ['review-queue', '/review', 'Review queue'],
     ['policy', '/policy', 'Backtest'],
+    ['evaluations', '/evaluations', 'New run'],
 ];
 
 for (const mode of MODES) {

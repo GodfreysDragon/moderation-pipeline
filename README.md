@@ -42,6 +42,11 @@ Upload ─► PrepareMedia ─► MatchKnownContent ─► ClassifyContent ─�
 
 - **Policy versions:** thresholds are append-only. Every decision records the version it used. The Policy page
   backtests proposed thresholds against recent items and against human decisions before you save.
+- **Model evaluation:** before switching models or effort levels, an admin re-scores recent human-decided items
+  with the candidate through the Message Batches API (half price, usually done in a minute or two). The report
+  judges the recorded scores and the candidate's under the same thresholds against what people decided: automated
+  decisions people agreed with, harm approved automatically, fine content removed, cost per item and score drift
+  per category. Batch requests are built by the same code as live ones, prompt caching included.
 
 ## Stack
 

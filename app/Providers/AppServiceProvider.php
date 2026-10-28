@@ -3,8 +3,11 @@
 namespace App\Providers;
 
 use Anthropic\Client;
+use App\Ai\ClaudeBatchClassifier;
 use App\Ai\ClaudeContentClassifier;
+use App\Ai\Contracts\BatchClassifier;
 use App\Ai\Contracts\ContentClassifier;
+use App\Ai\FakeBatchClassifier;
 use App\Ai\FakeContentClassifier;
 use App\Models\User;
 use App\Support\MediaSanitizer;
@@ -26,12 +29,21 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(ContentClassifier::class, fn () => match (config('moderation.classifier')) {
+        $this->app->singleton(Client::class, fn () => new Client(apiKey: config('moderation.anthropic.api_key')));
+
+        $this->app->singleton(ClaudeContentClassifier::class, fn ($app) => new ClaudeContentClassifier(
+            $app->make(Client::class),
+            config('moderation.anthropic.model'),
+        ));
+
+        $this->app->singleton(ContentClassifier::class, fn ($app) => match (config('moderation.classifier')) {
             'fake' => new FakeContentClassifier,
-            default => new ClaudeContentClassifier(
-                new Client(apiKey: config('moderation.anthropic.api_key')),
-                config('moderation.anthropic.model'),
-            ),
+            default => $app->make(ClaudeContentClassifier::class),
+        });
+
+        $this->app->singleton(BatchClassifier::class, fn ($app) => match (config('moderation.classifier')) {
+            'fake' => new FakeBatchClassifier,
+            default => new ClaudeBatchClassifier($app->make(Client::class), $app->make(ClaudeContentClassifier::class)),
         });
 
         $this->app->bind(MediaSanitizer::class, fn () => new MediaSanitizer(

@@ -2,6 +2,7 @@
 import { Link, usePage } from '@inertiajs/vue3';
 import {
     BookOpen,
+    FlaskConical,
     Images,
     LayoutGrid,
     ListChecks,
@@ -23,6 +24,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { index as evaluations } from '@/routes/evaluations';
 import { edit as policy } from '@/routes/policy';
 import { index as review } from '@/routes/review';
 import { create as submit, index as submissions } from '@/routes/submissions';
@@ -52,6 +54,15 @@ const mainNavItems = computed<NavItem[]>(() => {
                       badge: page.props.queueCount,
                   },
                   { title: 'Policy', href: policy(), icon: SlidersHorizontal },
+              ]
+            : []),
+        ...(page.props.auth.can.managePolicy
+            ? [
+                  {
+                      title: 'Model evaluation',
+                      href: evaluations(),
+                      icon: FlaskConical,
+                  },
               ]
             : []),
     ];

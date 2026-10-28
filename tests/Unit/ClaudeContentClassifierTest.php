@@ -1,6 +1,7 @@
 <?php
 
 use Anthropic\Client;
+use App\Ai\ClaudeBatchClassifier;
 use App\Ai\ClaudeContentClassifier;
 use App\Ai\Data\ClassificationInput;
 use App\Ai\Exceptions\ClassifierRefusedException;
@@ -146,4 +147,59 @@ test('it caches the system prompt and reports token usage, cache reads included'
         ->and($result->usage?->cacheRead)->toBe(1980)
         ->and($result->usage?->output)->toBe(260)
         ->and($result->usage?->totalInput())->toBe(2620);
+});
+
+test('batch re-classification sends the pipeline request without fallbacks and keys results by id', function () {
+    $sent = [];
+    $transport = new class($sent) implements ClientInterface
+    {
+        public function __construct(private array &$sent) {}
+
+        public function sendRequest(RequestInterface $request): ResponseInterface
+        {
+            $this->sent[] = $request;
+            $path = $request->getUri()->getPath();
+            $batch = fn (string $status) => json_encode([
+                'id' => 'msgbatch_1', 'type' => 'message_batch', 'processing_status' => $status,
+                'request_counts' => ['processing' => 0, 'succeeded' => 1, 'errored' => 1, 'canceled' => 0, 'expired' => 0],
+                'created_at' => '2026-10-28T10:00:00Z', 'expires_at' => '2026-10-29T10:00:00Z',
+                'ended_at' => null, 'archived_at' => null, 'cancel_initiated_at' => null, 'results_url' => null,
+            ]);
+
+            if (str_ends_with($path, '/results')) {
+                $message = claudeMessage(scoresJson(['spam' => 0.9]));
+                $message['usage'] = ['input_tokens' => 60, 'output_tokens' => 240, 'cache_read_input_tokens' => 2093, 'cache_creation_input_tokens' => 0];
+
+                return new Response(200, ['Content-Type' => 'application/x-jsonl'], implode("\n", [
+                    // Results come back in any order.
+                    json_encode(['custom_id' => 'submission-2', 'result' => ['type' => 'errored', 'error' => ['type' => 'error', 'error' => ['type' => 'overloaded_error', 'message' => 'Overloaded']]]]),
+                    json_encode(['custom_id' => 'submission-1', 'result' => ['type' => 'succeeded', 'message' => $message]]),
+                ])."\n");
+            }
+
+            return new Response(200, ['Content-Type' => 'application/json'], $batch($request->getMethod() === 'POST' ? 'in_progress' : 'ended'));
+        }
+    };
+
+    $client = new Client(apiKey: 'sk-test', requestOptions: ['transporter' => $transport, 'maxRetries' => 0]);
+    $batches = new ClaudeBatchClassifier($client, new ClaudeContentClassifier($client, 'claude-opus-5-5'));
+
+    $id = $batches->submit([
+        'submission-1' => new ClassificationInput('Crypto giveaway'),
+        'submission-2' => new ClassificationInput('Another one'),
+    ], 'claude-sonnet-5-5', 'medium');
+
+    $body = json_decode((string) $sent[0]->getBody(), true);
+    $outcome = $batches->poll($id);
+
+    expect($id)->toBe('msgbatch_1')
+        ->and($sent[0]->getUri()->getPath())->toEndWith('/messages/batches')
+        ->and($body['requests'][0]['custom_id'])->toBe('submission-1')
+        ->and($body['requests'][0]['params']['model'])->toBe('claude-sonnet-5-5')
+        ->and($body['requests'][0]['params']['output_config']['effort'])->toBe('medium')
+        ->and($body['requests'][0]['params']['system'][0]['cache_control'])->toBe(['type' => 'ephemeral'])
+        ->and($body['requests'][0]['params'])->not->toHaveKey('fallbacks')
+        ->and($outcome->classifications['submission-1']->scores()['spam'])->toBe(0.9)
+        ->and($outcome->classifications['submission-1']->usage?->cacheRead)->toBe(2093)
+        ->and($outcome->errors['submission-2'])->toBe('The batch request errored.');
 });

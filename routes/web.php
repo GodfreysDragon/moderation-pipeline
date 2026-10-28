@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\PolicyController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SubmissionController;
@@ -33,6 +34,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('policy', [PolicyController::class, 'edit'])->name('policy.edit');
     Route::post('policy/preview', [PolicyController::class, 'preview'])->name('policy.preview');
     Route::post('policy', [PolicyController::class, 'store'])->name('policy.store');
+
+    // Model evaluation (admins)
+    Route::get('evaluations', [EvaluationController::class, 'index'])->name('evaluations.index');
+    Route::post('evaluations', [EvaluationController::class, 'store'])->name('evaluations.store');
+    Route::get('evaluations/{evaluation}', [EvaluationController::class, 'show'])->name('evaluations.show');
 });
 
 require __DIR__.'/settings.php';

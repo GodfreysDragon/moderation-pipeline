@@ -104,3 +104,46 @@ export type SubmissionDetail = SubmissionSummary & {
     uploader_history?: { total: number; rejected: number };
     tasks?: ReviewTask[];
 };
+
+export type EvaluationStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+export type EvaluationRun = {
+    id: number;
+    model: string;
+    effort: string;
+    sample_size: number;
+    status: EvaluationStatus;
+    error: string | null;
+    items: number;
+    scored: number;
+    policy_version: number | null;
+    created_by: string | null;
+    created_at: string;
+    completed_at: string | null;
+};
+
+export type EvaluationSide = {
+    model: string | null;
+    outcomes: Record<'approve' | 'review' | 'reject', number>;
+    correct: number;
+    missed: number;
+    wrongful: number;
+    accuracy: number | null;
+    cost_per_item: number | null;
+};
+
+export type EvaluationReport = {
+    scored: number;
+    errored: number;
+    current: EvaluationSide;
+    candidate: EvaluationSide;
+    changed: number;
+    drift: { category: string; label: string; mean_change: number }[];
+    examples: {
+        id: number;
+        human: string;
+        current: string;
+        candidate: string;
+        caption: string | null;
+    }[];
+};
