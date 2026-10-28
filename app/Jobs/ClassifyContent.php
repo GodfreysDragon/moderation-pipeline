@@ -147,8 +147,7 @@ class ClassifyContent implements ShouldQueue
         } elseif ($e instanceof APIConnectionException) {
             $text = 'Could not reach the Anthropic API.';
         } else {
-            $text = (string) strtok($e->getMessage(), "
-");
+            $text = (string) strtok($e->getMessage(), "\n");
         }
 
         return mb_substr($text, 0, 250);
