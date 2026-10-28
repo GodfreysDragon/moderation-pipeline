@@ -30,6 +30,7 @@ use Illuminate\Support\Carbon;
  * @property bool $had_gps
  * @property string|null $sha256
  * @property string|null $dhash
+ * @property Carbon|null $media_pruned_at
  * @property array<string, array{score: float, evidence: string}>|null $ai_scores
  * @property string|null $ai_summary
  * @property string|null $ai_model
@@ -55,7 +56,7 @@ use Illuminate\Support\Carbon;
  */
 #[Fillable([
     'user_id', 'caption', 'upload_path', 'original_filename', 'image_path', 'thumbnail_path', 'mime', 'width',
-    'height', 'bytes', 'had_gps', 'sha256', 'dhash', 'ai_scores', 'ai_summary', 'ai_model', 'ai_error',
+    'height', 'bytes', 'had_gps', 'sha256', 'dhash', 'media_pruned_at', 'ai_scores', 'ai_summary', 'ai_model', 'ai_error',
     'ai_input_tokens', 'ai_cache_read_tokens', 'ai_cache_write_tokens', 'ai_output_tokens', 'status',
     'policy_outcome', 'policy_version_id', 'decision_source', 'decision_reason', 'decided_by', 'decided_at',
     'appeal_message', 'appealed_at',
@@ -82,6 +83,7 @@ class Submission extends Model
             'policy_outcome' => Outcome::class,
             'decision_source' => DecisionSource::class,
             'decided_at' => 'datetime',
+            'media_pruned_at' => 'datetime',
             'appealed_at' => 'datetime',
         ];
     }

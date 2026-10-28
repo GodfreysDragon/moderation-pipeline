@@ -95,7 +95,16 @@ ANTHROPIC_API_KEY=sk-ant-...
 ANTHROPIC_MODEL=claude-opus-5-5
 MODERATION_AI_CALLS_PER_MINUTE=30
 MODERATION_AUDIT_SAMPLE_RATE=0.05     # default for the first policy version
+MODERATION_SECOND_REVIEW_RATE=0.1     # share of triage decisions re-checked blind
+MODERATION_GRAPHIC_DAILY_LIMIT=40     # graphic decisions per reviewer per 24 hours
+MODERATION_RETENTION_DAYS=30          # days before rejected images are deleted
+MODERATION_EVALUATION_POLL_SECONDS=60 # how often to check a running batch
 ```
+
+Rejected images are deleted by `moderation:prune-media`, scheduled daily at 03:30; run `php artisan schedule:work`
+(or a cron entry for `schedule:run`) to have it fire. It never deletes before the 14-day appeal window closes or
+while a task is open, and it keeps the hashes so the blocklist still matches re-uploads. Admins can download every
+decision in a period, automated and human, from the dashboard as a CSV decision log.
 
 The fake classifier reads the caption and filename only. It also accepts pinned scores such as `[violence:0.6]`,
 and `[refuse]` simulates a model refusal, which is handy for demos and tests.

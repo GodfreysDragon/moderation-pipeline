@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
-import { Info } from '@lucide/vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Download, Info } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import StackedColumns from '@/components/charts/StackedColumns.vue';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/card';
 import { minutes, percent, shortDate } from '@/lib/format';
 import { dashboard } from '@/routes';
+import { decisionLog } from '@/routes/exports';
 import { index as review } from '@/routes/review';
 
 type Metrics = {
@@ -86,6 +87,7 @@ const thousands = (value: number) =>
         : value.toLocaleString('en-US');
 
 const props = defineProps<{ metrics: Metrics }>();
+const page = usePage();
 
 defineOptions({
     layout: {
@@ -162,6 +164,16 @@ const t = computed(() => props.metrics.totals);
                 @click="setDays(d)"
             >
                 Last {{ d }} days
+            </Button>
+            <Button
+                v-if="page.props.auth.can.managePolicy"
+                as="a"
+                size="sm"
+                variant="ghost"
+                class="ml-auto"
+                :href="decisionLog({ query: { days: metrics.days } }).url"
+            >
+                <Download /> Decision log (CSV)
             </Button>
         </div>
 

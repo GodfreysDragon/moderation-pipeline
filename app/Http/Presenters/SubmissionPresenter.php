@@ -65,6 +65,7 @@ final class SubmissionPresenter
         $data = [
             ...self::summary($submission, $viewer),
             'image_url' => $submission->image_path ? route('submissions.media', [$submission, 'image']) : null,
+            'media_pruned_at' => $submission->media_pruned_at?->toIso8601String(),
             'width' => $submission->width,
             'height' => $submission->height,
             'had_gps' => $submission->had_gps,

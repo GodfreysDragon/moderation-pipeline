@@ -93,4 +93,17 @@ return [
 
     'appeal_window_days' => 14,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Retention
+    |--------------------------------------------------------------------------
+    |
+    | Rejected images are deleted this many days after the decision (never before
+    | the appeal window closes, and never while a task is open). Their fingerprints
+    | stay, so the blocklist keeps working.
+    |
+    */
+
+    'retention_days' => (int) env('MODERATION_RETENTION_DAYS', 30),
+
 ];

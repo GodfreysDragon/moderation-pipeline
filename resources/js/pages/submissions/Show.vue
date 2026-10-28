@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, setLayoutProps, useForm, usePoll } from '@inertiajs/vue3';
-import { FileText, MapPinOff, ShieldAlert } from '@lucide/vue';
+import { FileText, ImageOff, MapPinOff, ShieldAlert } from '@lucide/vue';
 import { computed, watch } from 'vue';
 import InputError from '@/components/InputError.vue';
 import PipelineTimeline from '@/components/moderation/PipelineTimeline.vue';
@@ -91,6 +91,15 @@ const sendAppeal = () =>
                         :alt="submission.caption ?? 'Submitted image'"
                         class="max-h-[32rem] object-contain"
                     />
+                    <p
+                        v-else-if="submission.media_pruned_at"
+                        class="flex max-w-xs flex-col items-center gap-2 p-6 text-center text-sm text-muted-foreground"
+                    >
+                        <ImageOff class="size-8" aria-hidden="true" />
+                        The image was deleted
+                        {{ dateTime(submission.media_pruned_at) }} under the
+                        retention policy for rejected content.
+                    </p>
                     <Spinner
                         v-else-if="submission.has_image"
                         class="size-6 text-muted-foreground"

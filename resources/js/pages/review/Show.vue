@@ -5,6 +5,7 @@ import {
     Check,
     Eye,
     FileText,
+    ImageOff,
     Lock,
     MapPinOff,
     ShieldAlert,
@@ -160,6 +161,14 @@ const canEscalate = computed(
                             <Eye /> Show image
                         </Button>
                     </div>
+                    <p
+                        v-else-if="submission.media_pruned_at"
+                        class="flex max-w-xs flex-col items-center gap-2 p-6 text-center text-sm text-muted-foreground"
+                    >
+                        <ImageOff class="size-8" aria-hidden="true" />
+                        The image was deleted under the retention policy. Its
+                        fingerprint is still on file.
+                    </p>
                     <FileText
                         v-else
                         class="size-10 text-muted-foreground"

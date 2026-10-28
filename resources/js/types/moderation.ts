@@ -87,6 +87,7 @@ export type ReviewTask = {
 
 export type SubmissionDetail = SubmissionSummary & {
     image_url: string | null;
+    media_pruned_at: string | null;
     width: number | null;
     height: number | null;
     had_gps: boolean;

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DecisionLogController;
 use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\PolicyController;
 use App\Http\Controllers\ReviewController;
@@ -35,6 +36,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('policy', [PolicyController::class, 'edit'])->name('policy.edit');
     Route::post('policy/preview', [PolicyController::class, 'preview'])->name('policy.preview');
     Route::post('policy', [PolicyController::class, 'store'])->name('policy.store');
+
+    // Audit trail (admins)
+    Route::get('exports/decision-log', DecisionLogController::class)->name('exports.decision-log');
 
     // Reviewer quality (admins)
     Route::get('reviewers', ReviewerController::class)->name('reviewers.index');
