@@ -102,6 +102,7 @@ MODERATION_SECOND_REVIEW_RATE=0.1     # share of triage decisions re-checked bli
 MODERATION_GRAPHIC_DAILY_LIMIT=40     # graphic decisions per reviewer per 24 hours
 MODERATION_RETENTION_DAYS=30          # days before rejected images are deleted
 MODERATION_EVALUATION_POLL_SECONDS=60 # how often to check a running batch
+MODERATION_WEBHOOKS_ALLOW_PRIVATE=false # true only to test webhooks against a local receiver
 ```
 
 Rejected images are deleted by `moderation:prune-media`, scheduled daily at 03:30. `composer run dev` runs the
@@ -111,6 +112,31 @@ decision in a period, automated and human, from the dashboard as a CSV decision 
 
 The fake classifier reads the caption and filename only. It also accepts pinned scores such as `[violence:0.6]`,
 and `[refuse]` simulates a model refusal, which is handy for demos and tests.
+
+### API and webhooks
+
+Other systems can submit content and hear back about decisions. Create a token under **Settings → API & webhooks**
+(abilities `submissions:write` and `submissions:read`), then:
+
+```bash
+curl -X POST http://localhost:8000/api/submissions \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
+  -F caption="Evening at the harbour" -F image=@photo.jpg -F reference=your-own-id-123
+```
+
+| Endpoint                    | Returns                                                                                                                      |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/submissions`     | 202 with the submission while the pipeline runs. A `reference` already used returns the original (200), so retries are safe. |
+| `GET /api/submissions/{id}` | Status, and once decided the outcome, reason and appeal deadline. Never scores or reviewer notes.                            |
+| `GET /api/submissions`      | The token owner's submissions, newest first, 50 a page, optional `?status=`.                                                 |
+
+Add up to three webhook endpoints on the same page. Whenever one of your submissions is approved or rejected,
+including after review, appeal or audit, each endpoint gets a `submission.decided` POST with the same submission
+JSON. The `Moderation-Signature` header is `t=<unix time>,v1=<hex>`, where hex is the HMAC-SHA256 of
+`"<t>.<raw body>"` with the endpoint's signing secret (`App\Webhooks\Signature::verify` shows the check). Non-2xx
+answers are retried with backoff for about three hours, and the page lists recent deliveries. Endpoint URLs must
+resolve to public addresses: the server checks this when the URL is saved and again before each delivery, and
+connects to the address it checked, so a webhook can't be used to reach internal services.
 
 Measured against the live API (`claude-opus-5-5`, effort `low`), one classification takes 3 to 5 seconds and uses
 200 to 300 output tokens. Its input is a fixed 2,093-token prefix (the instructions and the output schema), about

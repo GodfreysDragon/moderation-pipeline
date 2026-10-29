@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\ApiAccessController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -24,6 +25,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('user-password.update');
 
     Route::inertia('settings/appearance', 'settings/Appearance')->name('appearance.edit');
+
+    // Tokens act as the user, so managing them asks for the password like Security does.
+    Route::middleware(RequirePassword::class)->prefix('settings/api')->name('api-access.')->controller(ApiAccessController::class)->group(function () {
+        Route::get('/', 'edit')->name('edit');
+        Route::post('tokens', 'storeToken')->name('tokens.store');
+        Route::delete('tokens/{token}', 'destroyToken')->whereNumber('token')->name('tokens.destroy');
+        Route::post('webhooks', 'storeEndpoint')->middleware('throttle:10,1')->name('webhooks.store');
+        Route::delete('webhooks/{endpoint}', 'destroyEndpoint')->name('webhooks.destroy');
+        Route::post('webhooks/{endpoint}/ping', 'ping')->middleware('throttle:10,1')->name('webhooks.ping');
+    });
 });
 
 Route::get('.well-known/passkey-endpoints', function () {

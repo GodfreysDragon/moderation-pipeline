@@ -106,4 +106,18 @@ return [
 
     'retention_days' => (int) env('MODERATION_RETENTION_DAYS', 30),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Webhooks
+    |--------------------------------------------------------------------------
+    |
+    | Endpoints must resolve to public addresses. Allow private targets only to
+    | test against a receiver on your own machine or network.
+    |
+    */
+
+    'webhooks' => [
+        'allow_private_targets' => (bool) env('MODERATION_WEBHOOKS_ALLOW_PRIVATE', false),
+    ],
+
 ];

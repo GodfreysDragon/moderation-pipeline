@@ -11,6 +11,7 @@ use App\Ai\FakeBatchClassifier;
 use App\Ai\FakeContentClassifier;
 use App\Models\User;
 use App\Support\MediaSanitizer;
+use App\Webhooks\UrlGuard;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Console\ServeCommand;
@@ -45,6 +46,8 @@ class AppServiceProvider extends ServiceProvider
             'fake' => new FakeBatchClassifier,
             default => new ClaudeBatchClassifier($app->make(Client::class), $app->make(ClaudeContentClassifier::class)),
         });
+
+        $this->app->bind(UrlGuard::class, fn () => new UrlGuard(config('moderation.webhooks.allow_private_targets')));
 
         $this->app->bind(MediaSanitizer::class, fn () => new MediaSanitizer(
             config('moderation.max_dimension'),
@@ -94,6 +97,8 @@ class AppServiceProvider extends ServiceProvider
     protected function configureRateLimiting(): void
     {
         // Uploads per user.
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(120)->by($request->user()?->id ?: $request->ip()));
+
         RateLimiter::for('submissions', fn (Request $request) => Limit::perMinute(20)
             ->by($request->user()?->id ?: $request->ip()));
 

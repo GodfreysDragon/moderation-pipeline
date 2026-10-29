@@ -7,8 +7,10 @@ use App\Enums\Category;
 use App\Enums\DecisionSource;
 use App\Enums\Outcome;
 use App\Enums\SubmissionStatus;
+use App\Observers\SubmissionObserver;
 use Database\Factories\SubmissionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,6 +23,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $caption
  * @property string|null $upload_path
  * @property string|null $original_filename
+ * @property string|null $external_ref
  * @property string|null $image_path
  * @property string|null $thumbnail_path
  * @property string|null $mime
@@ -55,8 +58,9 @@ use Illuminate\Support\Carbon;
  * @property-read User|null $decider
  * @property-read PolicyVersion|null $policyVersion
  */
+#[ObservedBy(SubmissionObserver::class)]
 #[Fillable([
-    'user_id', 'caption', 'upload_path', 'original_filename', 'image_path', 'thumbnail_path', 'mime', 'width',
+    'user_id', 'caption', 'upload_path', 'original_filename', 'external_ref', 'image_path', 'thumbnail_path', 'mime', 'width',
     'height', 'bytes', 'had_gps', 'sha256', 'dhash', 'media_pruned_at', 'ai_scores', 'ai_summary', 'ai_image_text', 'ai_model',
     'ai_error', 'ai_input_tokens', 'ai_cache_read_tokens', 'ai_cache_write_tokens', 'ai_output_tokens', 'status',
     'policy_outcome', 'policy_version_id', 'decision_source', 'decision_reason', 'decided_by', 'decided_at',

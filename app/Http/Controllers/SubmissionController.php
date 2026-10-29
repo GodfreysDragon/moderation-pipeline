@@ -4,15 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Enums\SubmissionStatus;
 use App\Http\Presenters\SubmissionPresenter;
+use App\Http\Requests\StoreSubmissionRequest;
 use App\Models\Submission;
-use App\Moderation\ModerationPipeline;
 use App\Moderation\ModerationService;
+use App\Moderation\SubmissionIntake;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -56,28 +55,9 @@ class SubmissionController extends Controller
         ]);
     }
 
-    /**
-     * Accept an upload and hand it to the pipeline. Nothing is analysed in the request.
-     */
-    public function store(Request $request, ModerationPipeline $pipeline): RedirectResponse
+    public function store(StoreSubmissionRequest $request, SubmissionIntake $intake): RedirectResponse
     {
-        $validated = $request->validate([
-            'caption' => ['nullable', 'string', 'max:2000', Rule::requiredIf(! $request->hasFile('image'))],
-            'image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,webp', 'max:'.config('moderation.max_upload_kb')],
-        ], [
-            'caption.required' => 'Add an image, a caption, or both.',
-        ]);
-
-        $upload = $request->file('image');
-        $path = $upload?->storeAs('uploads', (string) Str::uuid(), config('moderation.disk'));
-
-        $submission = $request->user()->submissions()->create([
-            'caption' => filled($validated['caption'] ?? null) ? trim($validated['caption']) : null,
-            'upload_path' => $path ?: null,
-            'original_filename' => $upload ? mb_substr(basename($upload->getClientOriginalName()), 0, 200) : null,
-        ]);
-
-        $pipeline->start($submission);
+        $submission = $intake->accept($request->user(), $request->validated('caption'), $request->file('image'));
 
         return to_route('submissions.show', $submission);
     }
