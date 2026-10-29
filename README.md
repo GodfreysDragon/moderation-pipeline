@@ -159,7 +159,7 @@ resolve to public addresses: the server checks this when the URL is saved and ag
 connects to the address it checked, so a webhook can't be used to reach internal services.
 
 Measured against the live API (`claude-opus-5-5`, effort `low`), one classification takes 3 to 5 seconds and uses
-200 to 300 output tokens. Its input is a fixed 2,093-token prefix (the instructions and the output schema), about
+200 to 300 output tokens. Its input is a fixed 2,177-token prefix (the instructions and the output schema), about
 50 tokens of caption and about 640 more for an image. The prefix is marked for prompt caching, so after the first
 call it is read from the cache at a twentieth of the input price:
 
@@ -180,7 +180,7 @@ served from the cache and what caching saved.
 ## Tests
 
 ```bash
-php artisan test        # 108 tests: pipeline, review workflow, policy, access, SDK request shape
+php artisan test        # 173 tests: pipeline, review workflow, policy, access, API, webhooks, SDK request shape
 npm run types:check
 npm run check
 ```
@@ -201,4 +201,6 @@ E2E_URL=http://127.0.0.1:8000 npm run test:e2e   # screenshots go to storage/e2e
 | `app/Moderation/`     | `PolicyEngine` (pure), `ModerationService` (decisions, claims, appeals), `PolicyBacktest`, `ModerationMetrics` |
 | `app/Ai/`             | `ContentClassifier` contract, Claude and fake implementations, structured-output schema                        |
 | `app/Support/`        | `MediaSanitizer` (re-encode, EXIF/GPS strip, thumbnails), `PerceptualHash` (dHash)                             |
+| `app/Webhooks/`       | `UrlGuard` (public-address check), `Signature` (HMAC), `WebhookDispatcher`; the API is in `routes/api.php`     |
+| `app/Notifications/`  | Decision, escalation and backlog notifications; live-update events are in `app/Events/`                        |
 | `resources/js/pages/` | Submissions, review queue and workspace, policy editor, staff dashboard                                        |
