@@ -72,7 +72,7 @@ cp .env.example .env && php artisan key:generate
 # Without an API key, use the offline classifier:
 #   MODERATION_CLASSIFIER=fake   (in .env)
 php artisan migrate --seed       # two weeks of demo history + sample images
-composer run dev                 # web server + one worker per pipeline queue + Vite
+composer run dev                 # web server + one worker per pipeline queue + scheduler + Vite
 ```
 
 Demo accounts (password `password`):
@@ -101,8 +101,8 @@ MODERATION_RETENTION_DAYS=30          # days before rejected images are deleted
 MODERATION_EVALUATION_POLL_SECONDS=60 # how often to check a running batch
 ```
 
-Rejected images are deleted by `moderation:prune-media`, scheduled daily at 03:30; run `php artisan schedule:work`
-(or a cron entry for `schedule:run`) to have it fire. It never deletes before the 14-day appeal window closes or
+Rejected images are deleted by `moderation:prune-media`, scheduled daily at 03:30. `composer run dev` runs the
+scheduler; in production add the usual cron entry (`* * * * * php artisan schedule:run`). It never deletes before the 14-day appeal window closes or
 while a task is open, and it keeps the hashes so the blocklist still matches re-uploads. Admins can download every
 decision in a period, automated and human, from the dashboard as a CSV decision log.
 
