@@ -9,7 +9,8 @@ const props = withDefaults(
         rows: T[];
         series: Series[];
         height?: number;
-        ariaLabel: string;
+        // Accessible name for the chart (and the data table caption).
+        label: string;
         tickLabel?: (row: T) => string;
     }>(),
     { height: 220, tickLabel: (row: { label: string }) => row.label },
@@ -158,7 +159,7 @@ const onKey = (event: KeyboardEvent) => {
                 :height="height"
                 class="block focus-visible:outline-2 focus-visible:outline-ring"
                 role="img"
-                :aria-label="ariaLabel"
+                :aria-label="label"
                 tabindex="0"
                 @keydown="onKey"
                 @blur="hover = null"
@@ -261,7 +262,7 @@ const onKey = (event: KeyboardEvent) => {
             <table class="w-full text-sm">
                 <caption class="sr-only">
                     {{
-                        ariaLabel
+                        label
                     }}
                 </caption>
                 <thead

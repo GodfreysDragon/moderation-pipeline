@@ -267,7 +267,7 @@ const t = computed(() => props.metrics.totals);
                     <StackedColumns
                         :rows="daily"
                         :series="series"
-                        :aria-label="`Submissions per day for the last ${metrics.days} days, split into automated, human-reviewed and still open`"
+                        :label="`Submissions per day for the last ${metrics.days} days, split into automated, human-reviewed and still open`"
                     />
                 </CardContent>
             </Card>
