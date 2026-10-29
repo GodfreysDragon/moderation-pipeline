@@ -33,6 +33,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $media_pruned_at
  * @property array<string, array{score: float, evidence: string}>|null $ai_scores
  * @property string|null $ai_summary
+ * @property string|null $ai_image_text
  * @property string|null $ai_model
  * @property string|null $ai_error
  * @property int|null $ai_input_tokens
@@ -56,8 +57,8 @@ use Illuminate\Support\Carbon;
  */
 #[Fillable([
     'user_id', 'caption', 'upload_path', 'original_filename', 'image_path', 'thumbnail_path', 'mime', 'width',
-    'height', 'bytes', 'had_gps', 'sha256', 'dhash', 'media_pruned_at', 'ai_scores', 'ai_summary', 'ai_model', 'ai_error',
-    'ai_input_tokens', 'ai_cache_read_tokens', 'ai_cache_write_tokens', 'ai_output_tokens', 'status',
+    'height', 'bytes', 'had_gps', 'sha256', 'dhash', 'media_pruned_at', 'ai_scores', 'ai_summary', 'ai_image_text', 'ai_model',
+    'ai_error', 'ai_input_tokens', 'ai_cache_read_tokens', 'ai_cache_write_tokens', 'ai_output_tokens', 'status',
     'policy_outcome', 'policy_version_id', 'decision_source', 'decision_reason', 'decided_by', 'decided_at',
     'appeal_message', 'appealed_at',
 ])]

@@ -21,16 +21,22 @@ class SubmissionController extends Controller
 {
     /**
      * Members see their own submissions; staff see everyone's, filterable by status.
+     * Search matches the caption, and for staff also the text read in the image.
      */
     public function index(Request $request): Response
     {
         $user = $request->user();
         $status = SubmissionStatus::tryFrom((string) $request->query('status'));
+        $search = mb_substr(trim((string) $request->query('q')), 0, 100);
+        $pattern = '%'.$search.'%';
 
         $submissions = Submission::query()
             ->with('user:id,name')
             ->when(! $user->isStaff(), fn ($q) => $q->where('user_id', $user->id))
             ->when($status, fn ($q) => $q->where('status', $status))
+            ->when($search !== '', fn ($q) => $q->where(fn ($q) => $q
+                ->whereLike('caption', $pattern)
+                ->when($user->isStaff(), fn ($q) => $q->orWhereLike('ai_image_text', $pattern))))
             ->latest('id')
             ->paginate(24)
             ->withQueryString()
@@ -38,7 +44,7 @@ class SubmissionController extends Controller
 
         return Inertia::render('submissions/Index', [
             'submissions' => $submissions,
-            'filters' => ['status' => $status?->value],
+            'filters' => ['status' => $status?->value, 'q' => $search !== '' ? $search : null],
             'scope' => $user->isStaff() ? 'all' : 'mine',
         ]);
     }

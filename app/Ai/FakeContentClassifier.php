@@ -11,6 +11,7 @@ use App\Enums\Category;
 /**
  * Deterministic offline stand-in for demos and tests. It can't see pixels: it
  * scores the caption and the original filename against a small keyword list.
+ * It "reads" the text in the bundled sample posters by their filenames.
  *
  * For demos and tests, a caption can also pin scores directly, e.g.
  * "[violence:0.62] [spam:0.9]", or force a refusal with "[refuse]".
@@ -32,9 +33,22 @@ class FakeContentClassifier implements ContentClassifier
         'spam' => ['crypto' => 0.45, 'giveaway' => 0.55, 'click the link' => 0.7, 'guaranteed returns' => 0.92, 'dm me' => 0.4, 'free followers' => 0.85],
     ];
 
+    /**
+     * The words drawn on the sample images in public/samples.
+     *
+     * @var array<string, string>
+     */
+    private const SAMPLE_TEXT = [
+        'crypto-giveaway.png' => 'CRYPTO GIVEAWAY 500% RETURNS LINK IN BIO',
+        'parts-for-sale.png' => 'PARTS FOR SALE NO PAPERS DM TO BUY',
+        'known-bad.png' => 'REMOVED MEME',
+        'known-bad-resized.jpg' => 'REMOVED MEME',
+    ];
+
     public function classify(ClassificationInput $input): Classification
     {
-        $text = mb_strtolower(trim(($input->caption ?? '').' '.str_replace(['-', '_'], ' ', $input->filename ?? '')));
+        $imageText = $input->hasImage() ? (self::SAMPLE_TEXT[$input->filename] ?? null) : null;
+        $text = mb_strtolower(trim(($input->caption ?? '').' '.str_replace(['-', '_'], ' ', $input->filename ?? '').' '.$imageText));
 
         if (str_contains($text, '[refuse]')) {
             throw ClassifierRefusedException::withCategory('general_harms');
@@ -52,7 +66,7 @@ class FakeContentClassifier implements ContentClassifier
             ? "{$subject} captioned \"".mb_strimwidth($input->caption, 0, 80, '…').'".'
             : "{$subject} with no caption.";
 
-        return new Classification($categories, $summary, self::MODEL);
+        return new Classification($categories, $summary, self::MODEL, imageText: $imageText);
     }
 
     /**

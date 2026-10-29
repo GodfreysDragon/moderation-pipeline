@@ -13,6 +13,7 @@ import {
 } from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import InputError from '@/components/InputError.vue';
+import ImageText from '@/components/moderation/ImageText.vue';
 import PipelineTimeline from '@/components/moderation/PipelineTimeline.vue';
 import ScoreBars from '@/components/moderation/ScoreBars.vue';
 import StatusBadge from '@/components/moderation/StatusBadge.vue';
@@ -220,6 +221,10 @@ const canEscalate = computed(
                     <p v-if="submission.ai?.summary" class="text-sm">
                         {{ submission.ai.summary }}
                     </p>
+                    <ImageText
+                        v-if="submission.ai?.image_text"
+                        :text="submission.ai.image_text"
+                    />
                     <ScoreBars
                         v-if="submission.ai?.categories.length"
                         :categories="submission.ai.categories"

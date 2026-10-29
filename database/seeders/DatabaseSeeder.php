@@ -307,6 +307,7 @@ class DatabaseSeeder extends Seeder
             $submission->update([
                 'ai_scores' => collect($scores)->map(fn ($s) => ['score' => $s, 'evidence' => $s >= 0.3 ? $this->evidence($profile) : 'none'])->all(),
                 'ai_summary' => $hasImage ? 'A photo with the caption shown.' : 'A text-only post.',
+                'ai_image_text' => $hasImage ? $this->imageText($profile) : null,
                 'ai_model' => 'claude-opus-5-5',
                 ...$this->tokenUsage($submission->id, $hasImage),
             ]);
@@ -623,6 +624,18 @@ class DatabaseSeeder extends Seeder
             'illegal_goods' => 'Offers restricted items for sale.',
             'sexual' => 'Sexually suggestive content.',
             default => 'Some resemblance to the category.',
+        };
+    }
+
+    /**
+     * The words drawn on the poster that imageFor() picks for a profile.
+     */
+    private function imageText(string $profile): ?string
+    {
+        return match ($profile) {
+            'spam' => 'FREE FOLLOWERS LINK IN BIO',
+            'illegal_goods' => 'FOR SALE DM TO BUY',
+            default => null,
         };
     }
 

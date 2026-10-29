@@ -1,18 +1,19 @@
 <script setup lang="ts">
 import { Head, Link, router, usePoll } from '@inertiajs/vue3';
-import { FileText, Upload } from '@lucide/vue';
-import { computed, watch } from 'vue';
+import { FileText, Search, Upload } from '@lucide/vue';
+import { computed, ref, watch } from 'vue';
 import Heading from '@/components/Heading.vue';
 import Pagination from '@/components/moderation/Pagination.vue';
 import StatusBadge from '@/components/moderation/StatusBadge.vue';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { timeAgo } from '@/lib/format';
 import { create, index, show } from '@/routes/submissions';
 import type { Paginated, SubmissionStatus, SubmissionSummary } from '@/types';
 
 const props = defineProps<{
     submissions: Paginated<SubmissionSummary>;
-    filters: { status: SubmissionStatus | null };
+    filters: { status: SubmissionStatus | null; q: string | null };
     scope: 'all' | 'mine';
 }>();
 
@@ -29,9 +30,16 @@ const tabs: { label: string; value: SubmissionStatus | null }[] = [
     { label: 'Rejected', value: 'rejected' },
 ];
 
-const filter = (status: SubmissionStatus | null) =>
+const search = ref(props.filters.q ?? '');
+
+const filter = (status: SubmissionStatus | null, q = props.filters.q) =>
     router.get(
-        index({ query: status ? { status } : {} }),
+        index({
+            query: {
+                ...(status ? { status } : {}),
+                ...(q ? { q } : {}),
+            },
+        }),
         {},
         {
             preserveScroll: true,
@@ -69,25 +77,58 @@ watch(processing, (busy) => (busy ? start() : stop()), { immediate: true });
             </Button>
         </div>
 
-        <div class="flex flex-wrap gap-2" role="tablist">
-            <Button
-                v-for="tab in tabs"
-                :key="tab.label"
-                size="sm"
-                :variant="filters.status === tab.value ? 'default' : 'outline'"
-                role="tab"
-                :aria-selected="filters.status === tab.value"
-                @click="filter(tab.value)"
+        <div class="flex flex-wrap items-center gap-2">
+            <div class="flex flex-wrap gap-2" role="tablist">
+                <Button
+                    v-for="tab in tabs"
+                    :key="tab.label"
+                    size="sm"
+                    :variant="
+                        filters.status === tab.value ? 'default' : 'outline'
+                    "
+                    role="tab"
+                    :aria-selected="filters.status === tab.value"
+                    @click="filter(tab.value)"
+                >
+                    {{ tab.label }}
+                </Button>
+            </div>
+            <form
+                role="search"
+                class="relative w-full sm:ml-auto sm:w-72"
+                @submit.prevent="filter(filters.status, search.trim() || null)"
             >
-                {{ tab.label }}
-            </Button>
+                <Search
+                    class="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+                    aria-hidden="true"
+                />
+                <Input
+                    v-model="search"
+                    type="search"
+                    class="pl-8"
+                    :placeholder="
+                        scope === 'all'
+                            ? 'Search captions and image text'
+                            : 'Search captions'
+                    "
+                    :aria-label="
+                        scope === 'all'
+                            ? 'Search captions and image text'
+                            : 'Search captions'
+                    "
+                />
+            </form>
         </div>
 
         <p
             v-if="submissions.data.length === 0"
             class="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground"
         >
-            Nothing here yet.
+            {{
+                filters.q
+                    ? `Nothing matches “${filters.q}”.`
+                    : 'Nothing here yet.'
+            }}
         </p>
 
         <ul

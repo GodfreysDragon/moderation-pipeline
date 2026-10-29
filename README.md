@@ -33,6 +33,9 @@ Upload ─► PrepareMedia ─► MatchKnownContent ─► ClassifyContent ─�
   each other must share at least one band exactly, so a near-duplicate check only compares the rows that do. With
   100,000 blocked images that is about 3% of rows: a median 79 ms instead of 2.2 s for a full scan (SQLite, this
   machine). Above a distance of 7 the guarantee no longer holds and it scans everything.
+- **Text in images:** the same classification call transcribes any words in the image (about 10–20 extra output
+  tokens per poster, nothing for a photo without text). Reviewers see it next to the image, staff can search it from
+  the submissions list, automated decisions carry it in the decision log, and it is deleted with the image.
 - **Review tasks:**
 
     | Task          | When it is created                                                                                        |

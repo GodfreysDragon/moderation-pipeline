@@ -18,6 +18,7 @@ final readonly class Classification
         public string $summary,
         public string $model,
         public ?TokenUsage $usage = null,
+        public ?string $imageText = null,
     ) {}
 
     /**
@@ -60,8 +61,12 @@ final readonly class Classification
                     'type' => 'string',
                     'description' => 'One neutral sentence describing the content for a human moderator.',
                 ],
+                'image_text' => [
+                    'type' => 'string',
+                    'description' => 'Any words legible in the image, transcribed verbatim with line breaks as spaces, or "" when the image has no text or there is no image. Do not include the caption.',
+                ],
             ],
-            'required' => ['categories', 'summary'],
+            'required' => ['categories', 'summary', 'image_text'],
             'additionalProperties' => false,
         ];
     }
@@ -91,7 +96,15 @@ final readonly class Classification
             ];
         }
 
-        return new self($categories, mb_substr((string) ($data['summary'] ?? ''), 0, 500), $model, $usage);
+        $imageText = trim(preg_replace('/\s+/u', ' ', (string) ($data['image_text'] ?? '')) ?? '');
+
+        return new self(
+            $categories,
+            mb_substr((string) ($data['summary'] ?? ''), 0, 500),
+            $model,
+            $usage,
+            $imageText === '' ? null : mb_substr($imageText, 0, 1000),
+        );
     }
 
     /**

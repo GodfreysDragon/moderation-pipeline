@@ -27,13 +27,14 @@ class DecisionLog
                 ->where(fn ($q) => $q->whereIn('decision_source', [DecisionSource::Policy, DecisionSource::Blocklist])->where('decided_at', '>=', $since))
                 ->orWhere('appealed_at', '>=', $since)
                 ->orWhere('media_pruned_at', '>=', $since))
-            ->get(['id', 'status', 'decision_source', 'decision_reason', 'decided_at', 'appealed_at', 'media_pruned_at', 'policy_version_id', 'ai_model'])
+            ->get(['id', 'status', 'decision_source', 'decision_reason', 'decided_at', 'appealed_at', 'media_pruned_at', 'policy_version_id', 'ai_model', 'ai_image_text'])
             ->each(function (Submission $s) use ($since, &$rows) {
                 if ($s->decision_source?->isAutomated() && $s->decided_at?->gte($since)) {
+                    // The model's reading of the image is part of what it decided on.
                     $rows[] = $this->row($s->decided_at, $s->id, null, 'system', match ($s->decision_source) {
                         DecisionSource::Blocklist => 'blocklist_reject',
                         default => 'auto_'.($s->status->value === 'approved' ? 'approve' : 'reject'),
-                    }, $s->decision_reason, null, $s->policy_version_id, $s->ai_model);
+                    }, $s->decision_reason, $s->ai_image_text ? "Image text: {$s->ai_image_text}" : null, $s->policy_version_id, $s->ai_model);
                 }
 
                 if ($s->appealed_at?->gte($since)) {

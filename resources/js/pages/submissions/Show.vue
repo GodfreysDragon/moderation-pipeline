@@ -3,6 +3,7 @@ import { Head, Link, setLayoutProps, useForm, usePoll } from '@inertiajs/vue3';
 import { FileText, ImageOff, MapPinOff, ShieldAlert } from '@lucide/vue';
 import { computed, watch } from 'vue';
 import InputError from '@/components/InputError.vue';
+import ImageText from '@/components/moderation/ImageText.vue';
 import PipelineTimeline from '@/components/moderation/PipelineTimeline.vue';
 import ScoreBars from '@/components/moderation/ScoreBars.vue';
 import StatusBadge from '@/components/moderation/StatusBadge.vue';
@@ -160,6 +161,10 @@ const sendAppeal = () =>
                     <p v-if="submission.ai?.summary" class="text-sm">
                         {{ submission.ai.summary }}
                     </p>
+                    <ImageText
+                        v-if="submission.ai?.image_text"
+                        :text="submission.ai.image_text"
+                    />
                     <ScoreBars
                         v-if="submission.ai?.categories.length"
                         :categories="submission.ai.categories"

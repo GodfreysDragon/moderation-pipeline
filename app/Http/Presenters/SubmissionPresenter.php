@@ -98,6 +98,7 @@ final class SubmissionPresenter
             'ai' => $submission->ai_scores === null && $submission->ai_error === null ? null : [
                 'model' => $submission->ai_model,
                 'summary' => $submission->ai_summary,
+                'image_text' => $submission->ai_image_text,
                 'error' => $submission->ai_error,
                 'categories' => $submission->ai_scores === null ? [] : collect(Category::cases())->map(fn (Category $c) => [
                     'value' => $c->value,

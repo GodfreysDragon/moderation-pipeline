@@ -35,7 +35,8 @@ class PruneMedia extends Command
 
         $query->lazyById(200)->each(function (Submission $submission) use ($disk, &$pruned) {
             $disk->delete(array_filter([$submission->image_path, $submission->thumbnail_path]));
-            $submission->update(['image_path' => null, 'thumbnail_path' => null, 'media_pruned_at' => now()]);
+            // The transcribed image text goes with the image; it can hold the same personal data.
+            $submission->update(['image_path' => null, 'thumbnail_path' => null, 'ai_image_text' => null, 'media_pruned_at' => now()]);
             $pruned++;
         });
 

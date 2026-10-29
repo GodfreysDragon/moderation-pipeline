@@ -100,6 +100,7 @@ export type SubmissionDetail = SubmissionSummary & {
     ai?: {
         model: string | null;
         summary: string | null;
+        image_text: string | null;
         error: string | null;
         categories: CategoryScore[];
     } | null;

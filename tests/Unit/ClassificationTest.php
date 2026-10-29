@@ -38,3 +38,16 @@ test('a reply missing a category is rejected', function () {
 
     Classification::fromArray($reply, 'm');
 })->throws(UnexpectedValueException::class, 'hate');
+
+test('text read in the image is required, whitespace-collapsed and empty when absent', function () {
+    expect(Classification::schema()['required'])->toContain('image_text');
+
+    $read = Classification::fromArray([...fullReply(), 'image_text' => "  FREE\nFOLLOWERS \t LINK IN BIO "], 'm');
+    $none = Classification::fromArray([...fullReply(), 'image_text' => ''], 'm');
+    $long = Classification::fromArray([...fullReply(), 'image_text' => str_repeat('a', 1200)], 'm');
+
+    expect($read->imageText)->toBe('FREE FOLLOWERS LINK IN BIO')
+        ->and($none->imageText)->toBeNull()
+        ->and(Classification::fromArray(fullReply(), 'm')->imageText)->toBeNull()
+        ->and(mb_strlen($long->imageText))->toBe(1000);
+});
