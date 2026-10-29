@@ -39,7 +39,7 @@ class EscalationOpened extends Notification implements ShouldQueue
      */
     public function via(User $notifiable): array
     {
-        return $notifiable->wantsEmail('escalations') ? ['database', 'mail'] : ['database'];
+        return $notifiable->wantsEmail('escalations') ? ['database', 'broadcast', 'mail'] : ['database', 'broadcast'];
     }
 
     public function toMail(User $notifiable): MailMessage

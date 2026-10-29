@@ -15,6 +15,7 @@
         "laravel/chisel": "^0.1.0",
         "laravel/fortify": "^1.37.2",
         "laravel/framework": "^13.17",
+        "laravel/reverb": "^1.12",
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.14"
@@ -55,7 +56,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#86efac,#fdba74,#fca5a5\" \"php artisan serve\" \"php artisan queue:listen --queue=moderation,default --tries=1 --timeout=0\" \"php artisan queue:listen --queue=moderation-ai --tries=1 --timeout=0\" \"php artisan schedule:work\" \"npm run dev\" --names='server,queue,ai-queue,scheduler,vite'"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#86efac,#fdba74,#fca5a5,#a5f3fc\" \"php artisan serve\" \"php artisan queue:listen --queue=moderation,default --tries=1 --timeout=0\" \"php artisan queue:listen --queue=moderation-ai --tries=1 --timeout=0\" \"php artisan schedule:work\" \"php artisan reverb:start\" \"npm run dev\" --names='server,queue,ai-queue,scheduler,reverb,vite'"
         ],
         "lint": [
             "pint --parallel"

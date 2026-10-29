@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { timeAgo } from '@/lib/format';
 import { index, next, show } from '@/routes/review';
+import { useLiveReload } from '@/lib/live';
 import type {
     Paginated,
     ReviewTask,
@@ -33,6 +34,8 @@ defineOptions({
         breadcrumbs: [{ title: 'Review queue', href: index() }],
     },
 });
+
+useLiveReload(() => 'moderation', ['queue.changed'], ['tasks', 'kinds']);
 
 const filter = (kind: TaskKind | null) =>
     router.get(

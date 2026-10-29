@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router, usePoll } from '@inertiajs/vue3';
+import { Head, Link, router, usePage, usePoll } from '@inertiajs/vue3';
 import { FileText, Search, Upload } from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
 import Heading from '@/components/Heading.vue';
@@ -8,6 +8,7 @@ import StatusBadge from '@/components/moderation/StatusBadge.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { timeAgo } from '@/lib/format';
+import { liveConnected, useLiveReload } from '@/lib/live';
 import { create, index, show } from '@/routes/submissions';
 import type { Paginated, SubmissionStatus, SubmissionSummary } from '@/types';
 
@@ -56,7 +57,21 @@ const { start, stop } = usePoll(
     { only: ['submissions'] },
     { autoStart: false },
 );
-watch(processing, (busy) => (busy ? start() : stop()), { immediate: true });
+watch(
+    [processing, liveConnected],
+    ([busy, live]) => (busy && !live ? start() : stop()),
+    { immediate: true },
+);
+
+const page = usePage();
+useLiveReload(
+    () =>
+        props.scope === 'all'
+            ? 'moderation'
+            : `App.Models.User.${page.props.auth.user.id}`,
+    ['submission.changed'],
+    ['submissions'],
+);
 </script>
 
 <template>

@@ -10,6 +10,7 @@ use App\Enums\PipelineStage;
 use App\Enums\SubmissionStatus;
 use App\Enums\TaskKind;
 use App\Enums\UserRole;
+use App\Events\ReviewQueueChanged;
 use App\Exceptions\ClaimLostException;
 use App\Models\BlockedHash;
 use App\Models\PipelineStep;
@@ -139,6 +140,11 @@ class ModerationService
 
         $task->refresh();
 
+        // These conditional updates bypass model events, so announce them here.
+        if ($won) {
+            ReviewQueueChanged::dispatch($task->id);
+        }
+
         return $won;
     }
 
@@ -212,13 +218,17 @@ class ModerationService
 
     public function release(ReviewTask $task, User $user): void
     {
-        ReviewTask::query()
+        $released = ReviewTask::query()
             ->whereKey($task->id)
             ->open()
             ->where('claimed_by', $user->id)
-            ->update(['claimed_by' => null, 'claimed_at' => null, 'claim_expires_at' => null]);
+            ->update(['claimed_by' => null, 'claimed_at' => null, 'claim_expires_at' => null]) === 1;
 
         $task->refresh();
+
+        if ($released) {
+            ReviewQueueChanged::dispatch($task->id);
+        }
     }
 
     /**
@@ -264,6 +274,8 @@ class ModerationService
             if (! $resolved) {
                 throw new ClaimLostException('Your claim on this task expired or was taken.');
             }
+
+            ReviewQueueChanged::dispatch($task->id);
 
             if ($decision === Decision::Escalate) {
                 $this->openTask(

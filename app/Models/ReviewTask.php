@@ -5,8 +5,10 @@ namespace App\Models;
 use App\Enums\Decision;
 use App\Enums\Outcome;
 use App\Enums\TaskKind;
+use App\Observers\ReviewTaskObserver;
 use Database\Factories\ReviewTaskFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -39,6 +41,7 @@ use Illuminate\Support\Carbon;
  * @property-read User|null $claimant
  * @property-read User|null $resolver
  */
+#[ObservedBy(ReviewTaskObserver::class)]
 #[Fillable([
     'submission_id', 'kind', 'priority', 'graphic', 'automated_outcome', 'excluded_reviewer_id', 'reviews_task_id', 'note', 'claimed_by',
     'claimed_at', 'claim_expires_at', 'decision', 'reason', 'decision_note', 'resolved_by', 'resolved_at',

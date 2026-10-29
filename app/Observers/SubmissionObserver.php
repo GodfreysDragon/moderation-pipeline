@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Events\SubmissionChanged;
 use App\Models\Submission;
 use App\Webhooks\WebhookDispatcher;
 
@@ -17,6 +18,11 @@ class SubmissionObserver
     {
         if ($submission->wasChanged('status') && $submission->status->isFinal()) {
             $this->webhooks->submissionDecided($submission);
+        }
+
+        // What open pages show; token counts and the like don't need a refresh.
+        if ($submission->wasChanged(['status', 'ai_scores', 'ai_error', 'image_path', 'decided_at', 'appealed_at', 'media_pruned_at'])) {
+            event(SubmissionChanged::for($submission));
         }
     }
 }

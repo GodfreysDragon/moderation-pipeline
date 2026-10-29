@@ -4,7 +4,9 @@ namespace App\Models;
 
 use App\Enums\PipelineStage;
 use App\Enums\StepStatus;
+use App\Observers\PipelineStepObserver;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -23,6 +25,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $finished_at
  * @property int|null $duration_ms
  */
+#[ObservedBy(PipelineStepObserver::class)]
 #[Fillable(['submission_id', 'stage', 'status', 'attempt', 'detail', 'error', 'started_at', 'finished_at', 'duration_ms'])]
 class PipelineStep extends Model
 {

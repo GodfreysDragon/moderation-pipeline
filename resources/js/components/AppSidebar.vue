@@ -24,6 +24,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { useLiveReload } from '@/lib/live';
 import { dashboard } from '@/routes';
 import { index as evaluations } from '@/routes/evaluations';
 import { edit as policy } from '@/routes/policy';
@@ -33,6 +34,13 @@ import { create as submit, index as submissions } from '@/routes/submissions';
 import type { NavItem } from '@/types';
 
 const page = usePage();
+
+// Keep the queue badge current for staff.
+useLiveReload(
+    () => (page.props.auth.can.moderate ? 'moderation' : null),
+    ['queue.changed'],
+    ['queueCount'],
+);
 
 const mainNavItems = computed<NavItem[]>(() => {
     const staff = page.props.auth.can.moderate;

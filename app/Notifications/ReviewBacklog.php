@@ -25,7 +25,7 @@ class ReviewBacklog extends Notification implements ShouldQueue
      */
     public function via(User $notifiable): array
     {
-        return $notifiable->wantsEmail('backlog') ? ['database', 'mail'] : ['database'];
+        return $notifiable->wantsEmail('backlog') ? ['database', 'broadcast', 'mail'] : ['database', 'broadcast'];
     }
 
     public function title(): string

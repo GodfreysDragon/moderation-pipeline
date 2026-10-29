@@ -75,7 +75,7 @@ cp .env.example .env && php artisan key:generate
 # Without an API key, use the offline classifier:
 #   MODERATION_CLASSIFIER=fake   (in .env)
 php artisan migrate --seed       # two weeks of demo history + sample images
-composer run dev                 # web server + one worker per pipeline queue + scheduler + Vite
+composer run dev                 # web server, a worker per pipeline queue, scheduler, Reverb, Vite
 ```
 
 Demo accounts (password `password`):
@@ -121,6 +121,14 @@ decision in a period, automated and human, from the dashboard as a CSV decision 
 | Staff    | A task has waited longer than `MODERATION_BACKLOG_ALERT_MINUTES` (checked every 15 minutes, at most one alert per two hours) | No               |
 
 Emails are queued, so they need a worker and a configured mailer (`MAIL_MAILER=log` writes them to the log).
+
+**Live updates** run over [Reverb](https://reverb.laravel.com) (`php artisan reverb:start`, included in
+`composer run dev`). A submission's page follows each pipeline stage as it happens, submission lists and the review
+queue refresh when items change, the sidebar queue count stays current, and new notifications appear under the bell.
+Events carry only an id and a status on private channels (the uploader's own channel, one per submission, and a
+staff channel); the page then reloads its own props, so nobody learns more than they could already see. Without
+Reverb (`BROADCAST_CONNECTION=log`, or the server not running) pages fall back to polling while something is in the
+pipeline. `.env.example` ships local-only Reverb keys; run `php artisan reverb:install` for real ones.
 
 The fake classifier reads the caption and filename only. It also accepts pinned scores such as `[violence:0.6]`,
 and `[refuse]` simulates a model refusal, which is handy for demos and tests.

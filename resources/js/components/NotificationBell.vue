@@ -12,11 +12,14 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { timeAgo } from '@/lib/format';
+import { useLiveNotifications } from '@/lib/live';
 import { open, readAll } from '@/routes/notifications';
 import type { AppNotification } from '@/types';
 
 const page = usePage();
 const feed = computed(() => page.props.notifications);
+
+useLiveNotifications(() => page.props.auth.user?.id ?? null, ['notifications']);
 
 const icons: Record<NonNullable<AppNotification['kind']>, typeof Bell> = {
     decision: Gavel,

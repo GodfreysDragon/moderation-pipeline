@@ -21,6 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { dateTime, sourceLabel } from '@/lib/format';
 import { show as reviewTask } from '@/routes/review';
 import { appeal, index, show } from '@/routes/submissions';
+import { liveConnected, useLiveReload } from '@/lib/live';
 import type { SubmissionDetail } from '@/types';
 
 const props = defineProps<{ submission: SubmissionDetail }>();
@@ -34,15 +35,20 @@ setLayoutProps({
 
 const staff = computed(() => props.submission.ai !== undefined);
 
-// Poll while the pipeline is still running.
+// Live updates when Reverb is connected; otherwise poll while the pipeline runs.
+useLiveReload(
+    () => `submissions.${props.submission.id}`,
+    ['submission.changed'],
+    ['submission'],
+);
 const { start, stop } = usePoll(
     1000,
     { only: ['submission'] },
     { autoStart: false },
 );
 watch(
-    () => props.submission.status,
-    (status) => (status === 'processing' ? start() : stop()),
+    [() => props.submission.status, liveConnected],
+    ([status, live]) => (status === 'processing' && !live ? start() : stop()),
     { immediate: true },
 );
 

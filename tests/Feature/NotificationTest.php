@@ -38,11 +38,11 @@ test('the uploader hears when a moderator decides their post, by email unless th
         return $n->title === 'Your post was removed'
             && str_contains($n->body, 'Spam')
             && str_contains($n->body, 'You can appeal until')
-            && $channels === ['database', 'mail'];
+            && $channels === ['database', 'broadcast', 'mail'];
     });
 
     $this->uploader->update(['notification_preferences' => ['decisions' => false]]);
-    expect((new SubmissionDecided($submission))->via($this->uploader->refresh()))->toBe(['database']);
+    expect((new SubmissionDecided($submission))->via($this->uploader->refresh()))->toBe(['database', 'broadcast']);
 });
 
 test('automatic approvals are not announced; automatic removals are', function () {
@@ -90,7 +90,7 @@ test('a backlog alert goes to staff once per cooldown, and only when something i
     $this->artisan('moderation:check-backlog')->expectsOutputToContain('1 overdue; alerted 2 staff')->assertSuccessful();
     $this->artisan('moderation:check-backlog')->expectsOutputToContain('already alerted')->assertSuccessful();
 
-    Notification::assertSentTo([$this->moderator, $this->admin], ReviewBacklog::class, fn (ReviewBacklog $n, array $channels) => $n->oldestMinutes === 95 && $channels === ['database']);
+    Notification::assertSentTo([$this->moderator, $this->admin], ReviewBacklog::class, fn (ReviewBacklog $n, array $channels) => $n->oldestMinutes === 95 && $channels === ['database', 'broadcast']);
     Notification::assertNotSentTo($this->uploader, ReviewBacklog::class);
 });
 

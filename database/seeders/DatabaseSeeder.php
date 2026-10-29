@@ -10,6 +10,8 @@ use App\Enums\PipelineStage;
 use App\Enums\StepStatus;
 use App\Enums\SubmissionStatus;
 use App\Enums\TaskKind;
+use App\Events\ReviewQueueChanged;
+use App\Events\SubmissionChanged;
 use App\Models\BlockedHash;
 use App\Models\PipelineStep;
 use App\Models\PolicyVersion;
@@ -25,6 +27,7 @@ use Carbon\CarbonImmutable;
 use Database\Seeders\Demo\SampleImages;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -85,6 +88,10 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        // Nobody is watching two weeks of history being written; without this every
+        // step and task would queue a live-update broadcast.
+        Event::fake([SubmissionChanged::class, ReviewQueueChanged::class]);
+
         mt_srand(2026);
         Model::unguard();
         $this->engine = new PolicyEngine;
