@@ -72,6 +72,11 @@ return [
 
     'claim_minutes' => 10,
 
+    // Staff are notified when a task has waited this long, at most once per cooldown.
+    'backlog_alert_minutes' => (int) env('MODERATION_BACKLOG_ALERT_MINUTES', 60),
+
+    'backlog_alert_cooldown_minutes' => 120,
+
     // Share of triage decisions a second, blind reviewer checks to measure agreement (0-1).
     'second_review_rate' => (float) env('MODERATION_SECOND_REVIEW_RATE', 0.1),
 

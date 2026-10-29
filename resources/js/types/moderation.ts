@@ -155,3 +155,17 @@ export type EvaluationReport = {
         caption: string | null;
     }[];
 };
+
+export type AppNotification = {
+    id: string;
+    kind: 'decision' | 'escalation' | 'backlog' | null;
+    title: string;
+    body: string;
+    read: boolean;
+    created_at: string | null;
+};
+
+export type NotificationFeed = {
+    unread: number;
+    recent: AppNotification[];
+};

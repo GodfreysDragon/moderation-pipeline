@@ -103,12 +103,24 @@ MODERATION_GRAPHIC_DAILY_LIMIT=40     # graphic decisions per reviewer per 24 ho
 MODERATION_RETENTION_DAYS=30          # days before rejected images are deleted
 MODERATION_EVALUATION_POLL_SECONDS=60 # how often to check a running batch
 MODERATION_WEBHOOKS_ALLOW_PRIVATE=false # true only to test webhooks against a local receiver
+MODERATION_BACKLOG_ALERT_MINUTES=60   # tell staff when a task has waited this long
 ```
 
 Rejected images are deleted by `moderation:prune-media`, scheduled daily at 03:30. `composer run dev` runs the
 scheduler; in production add the usual cron entry (`* * * * * php artisan schedule:run`). It never deletes before the 14-day appeal window closes or
 while a task is open, and it keeps the hashes so the blocklist still matches re-uploads. Admins can download every
 decision in a period, automated and human, from the dashboard as a CSV decision log.
+
+**Notifications** appear under the bell in the header, and by email where the person has it switched on under
+**Settings → Notifications**:
+
+| Who      | When                                                                                                                         | Email by default |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| Uploader | A post is removed, or a moderator, an appeal or an audit decides it (instant automatic approvals are not announced)          | Yes              |
+| Admins   | A moderator escalates an item                                                                                                | Yes              |
+| Staff    | A task has waited longer than `MODERATION_BACKLOG_ALERT_MINUTES` (checked every 15 minutes, at most one alert per two hours) | No               |
+
+Emails are queued, so they need a worker and a configured mailer (`MAIL_MAILER=log` writes them to the log).
 
 The fake classifier reads the caption and filename only. It also accepts pinned scores such as `[violence:0.6]`,
 and `[refuse]` simulates a model refusal, which is handy for demos and tests.

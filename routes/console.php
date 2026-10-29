@@ -11,5 +11,7 @@ Artisan::command('inspire', function () {
 
 Schedule::command('moderation:prune-media')->dailyAt('03:30');
 
+Schedule::command('moderation:check-backlog')->everyFifteenMinutes();
+
 // Webhook delivery records older than 30 days (see WebhookDelivery::prunable).
 Schedule::command('model:prune', ['--model' => [WebhookDelivery::class]])->dailyAt('03:45');

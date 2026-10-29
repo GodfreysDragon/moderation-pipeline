@@ -17,6 +17,8 @@ use App\Models\ReviewTask;
 use App\Models\Submission;
 use App\Models\User;
 use App\Moderation\PolicyEngine;
+use App\Notifications\EscalationOpened;
+use App\Notifications\SubmissionDecided;
 use App\Support\MediaSanitizer;
 use App\Support\SanitizedImage;
 use Carbon\CarbonImmutable;
@@ -138,8 +140,29 @@ class DatabaseSeeder extends Seeder
             fn (ReviewTask $task) => $task->updateQuietly(['graphic' => $task->submission->isGraphic()]),
         );
 
+        $this->seedNotifications();
+
         Model::reguard();
         mt_srand();
+    }
+
+    /**
+     * A few bell notifications, as ModerationService would have sent them (in-app only:
+     * the seeder bypasses the service, and demo data shouldn't send email).
+     */
+    private function seedNotifications(): void
+    {
+        $member = $this->members[0];
+
+        Submission::query()->whereBelongsTo($member)->where('status', SubmissionStatus::Rejected)->latest('decided_at')->limit(3)->get()
+            ->each(fn (Submission $s) => $member->notifyNow(new SubmissionDecided($s), ['database']));
+        $member->notifications()->latest()->skip(1)->first()?->markAsRead();
+
+        $escalation = ReviewTask::query()->open()->where('kind', TaskKind::Escalation)->first();
+
+        if ($escalation) {
+            $this->admin->notifyNow(new EscalationOpened($escalation), ['database']);
+        }
     }
 
     private function createUsers(): void

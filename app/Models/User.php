@@ -28,15 +28,22 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
  * @property string|null $remember_token
+ * @property array<string, bool>|null $notification_preferences
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'password', 'role'])]
+#[Fillable(['name', 'email', 'password', 'role', 'notification_preferences'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+
+    /**
+     * Email defaults: decisions about your own posts and escalations waiting for you
+     * are worth an email; a queue backlog is opt-in.
+     */
+    public const EMAIL_DEFAULTS = ['decisions' => true, 'escalations' => true, 'backlog' => false];
 
     protected $attributes = [
         'role' => 'member',
@@ -54,6 +61,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'role' => UserRole::class,
+            'notification_preferences' => 'array',
         ];
     }
 
@@ -81,5 +89,28 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function isAdmin(): bool
     {
         return $this->role === UserRole::Admin;
+    }
+
+    /**
+     * Which email notifications this user can receive, by role.
+     *
+     * @return list<string>
+     */
+    public function emailOptions(): array
+    {
+        return array_values(array_filter([
+            'decisions',
+            $this->isAdmin() ? 'escalations' : null,
+            $this->isStaff() ? 'backlog' : null,
+        ]));
+    }
+
+    /**
+     * Notifications always appear in the app; this says whether one also goes by email.
+     */
+    public function wantsEmail(string $kind): bool
+    {
+        return in_array($kind, $this->emailOptions(), true)
+            && (bool) ($this->notification_preferences[$kind] ?? self::EMAIL_DEFAULTS[$kind] ?? false);
     }
 }

@@ -9,13 +9,17 @@ use App\Enums\Outcome;
 use App\Enums\PipelineStage;
 use App\Enums\SubmissionStatus;
 use App\Enums\TaskKind;
+use App\Enums\UserRole;
 use App\Exceptions\ClaimLostException;
 use App\Models\BlockedHash;
 use App\Models\PipelineStep;
 use App\Models\ReviewTask;
 use App\Models\Submission;
 use App\Models\User;
+use App\Notifications\EscalationOpened;
+use App\Notifications\SubmissionDecided;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Lottery;
 use LogicException;
 
@@ -40,6 +44,10 @@ class ModerationService
             'decided_by' => $by?->id,
             'decided_at' => now(),
         ]);
+
+        if ($submission->wasChanged('status') && SubmissionDecided::isWorthSending($submission)) {
+            $submission->user->notify(new SubmissionDecided($submission));
+        }
     }
 
     public function openTask(
@@ -51,7 +59,7 @@ class ModerationService
         ?string $note = null,
         ?int $reviewsTaskId = null,
     ): ReviewTask {
-        return $submission->tasks()->create([
+        $task = $submission->tasks()->create([
             'kind' => $kind,
             'priority' => max(-100, min(200, $basePriority + $kind->priorityBoost())),
             'graphic' => $submission->isGraphic(),
@@ -60,6 +68,12 @@ class ModerationService
             'reviews_task_id' => $reviewsTaskId,
             'note' => $note,
         ]);
+
+        if ($kind === TaskKind::Escalation) {
+            Notification::send(User::query()->where('role', UserRole::Admin)->get(), new EscalationOpened($task));
+        }
+
+        return $task;
     }
 
     /**

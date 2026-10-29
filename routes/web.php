@@ -3,6 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DecisionLogController;
 use App\Http\Controllers\EvaluationController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PolicyController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ReviewerController;
@@ -13,6 +14,9 @@ Route::inertia('/', 'Welcome')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+
+    Route::get('notifications/{notification}', [NotificationController::class, 'open'])->whereUuid('notification')->name('notifications.open');
+    Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
 
     // Uploads
     Route::get('submissions', [SubmissionController::class, 'index'])->name('submissions.index');

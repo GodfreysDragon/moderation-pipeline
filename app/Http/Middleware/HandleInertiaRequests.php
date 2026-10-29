@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\ReviewTask;
 use App\Moderation\ModerationService;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\DatabaseNotification;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -54,6 +55,18 @@ class HandleInertiaRequests extends Middleware
                     ->where(fn ($q) => $q->whereNull('excluded_reviewer_id')->orWhere('excluded_reviewer_id', '!=', $request->user()->id))
                     ->count()
                 : null,
+            // The header bell: unread count and the latest few.
+            'notifications' => fn () => $request->user() ? [
+                'unread' => $request->user()->unreadNotifications()->count(),
+                'recent' => $request->user()->notifications()->limit(8)->get()->map(fn (DatabaseNotification $n) => [
+                    'id' => $n->id,
+                    'kind' => $n->data['kind'] ?? null,
+                    'title' => $n->data['title'] ?? '',
+                    'body' => $n->data['body'] ?? '',
+                    'read' => $n->read_at !== null,
+                    'created_at' => $n->created_at?->toIso8601String(),
+                ])->values()->all(),
+            ] : null,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }
